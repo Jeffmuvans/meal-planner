@@ -454,6 +454,132 @@ function DetailSheet({recipe,foods,pantry,T,close,setModal}){
   </Sheet>;
 }
 
+/* ── Day Nutrition Summary ── */
+function DayNutrSummary({date,planner,recipes,foods,T}){
+  const [expanded,setExpanded]=useState(true);
+
+  const total=useMemo(()=>{
+    return MEALS.reduce((acc,meal)=>{
+      const slot=planner[`${dKey(date)}_${meal}`]||[];
+      return slot.reduce((a,entry)=>{
+        let n={cal:0,prot:0,carbs:0,fat:0,fiber:0};
+        if(entry.type==='food'){
+          const f=foods.find(x=>x.id===entry.foodId);
+          if(f){const r=entry.amount/f.serving;n={cal:f.cal*r,prot:f.prot*r,carbs:f.carbs*r,fat:f.fat*r,fiber:f.fiber*r};}
+        } else {
+          const rec=recipes.find(r=>r.id===entry.rId);
+          if(rec) n=calcN(rec.ingredients,foods,entry.qty||1);
+        }
+        return{cal:a.cal+n.cal,prot:a.prot+n.prot,carbs:a.carbs+n.carbs,fat:a.fat+n.fat,fiber:a.fiber+n.fiber};
+      },acc);
+    },{cal:0,prot:0,carbs:0,fat:0,fiber:0});
+  },[date,planner,recipes,foods]);
+
+  const hasFood=total.cal>0;
+  // Reference daily values
+  const REF={cal:2000,prot:50,carbs:275,fat:78,fiber:28};
+  const pct=(v,ref)=>Math.min(100,Math.round((v/ref)*100));
+  const calPct=pct(total.cal,REF.cal);
+
+  // SVG ring
+  const R=38,C=2*Math.PI*R,filled=(calPct/100)*C;
+  const ringColor=calPct>110?'#ef4444':calPct>90?T.accent:T.accent;
+
+  const macros=[
+    {l:'Proteína', v:r1(total.prot), u:'g', ref:REF.prot, color:'#14532D', bg:'#DCFCE7', fill:'#22c55e'},
+    {l:'Carbos',   v:r1(total.carbs),u:'g', ref:REF.carbs,color:'#1E3A8A', bg:'#EFF6FF', fill:'#3b82f6'},
+    {l:'Grasas',   v:r1(total.fat),  u:'g', ref:REF.fat,  color:'#581C87', bg:'#F5F3FF', fill:'#a855f7'},
+    {l:'Fibra',    v:r1(total.fiber),u:'g', ref:REF.fiber, color:'#7C2D12', bg:'#FFF7ED', fill:'#f97316'},
+  ];
+
+  return(
+    <div className="card-enter" style={{margin:'12px 16px 4px',borderRadius:16,border:`1.5px solid ${T.border}`,background:T.surface,overflow:'hidden'}}>
+      {/* Header row — always visible, tap to expand/collapse */}
+      <button onClick={()=>setExpanded(e=>!e)} style={{width:'100%',padding:'12px 16px',display:'flex',alignItems:'center',gap:12,background:'none',border:'none',cursor:'pointer',textAlign:'left'}}>
+        {/* Mini ring */}
+        <div style={{flexShrink:0,position:'relative',width:44,height:44}}>
+          <svg width="44" height="44" viewBox="0 0 88 88" style={{transform:'rotate(-90deg)'}}>
+            <circle cx="44" cy="44" r={R} fill="none" stroke={T.border} strokeWidth="8"/>
+            <circle cx="44" cy="44" r={R} fill="none" stroke={ringColor} strokeWidth="8"
+              strokeDasharray={`${C}`} strokeDashoffset={`${C-filled}`}
+              strokeLinecap="round" style={{transition:'stroke-dashoffset .6s cubic-bezier(.4,0,.2,1)'}}/>
+          </svg>
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontSize:10,fontWeight:800,color:T.text}}>{hasFood?calPct+'%':'—'}</span>
+          </div>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:T.text}}>Resumen del día</div>
+          {hasFood
+            ? <div style={{fontSize:12,color:T.text2,marginTop:2}}><span style={{fontWeight:700,color:T.accent}}>{r0(total.cal)}</span> kcal · {r1(total.prot)}g prot · {r1(total.carbs)}g carbs</div>
+            : <div style={{fontSize:12,color:T.text3,marginTop:2}}>Sin comidas planificadas</div>}
+        </div>
+        <div style={{color:T.text3,transition:'transform .25s',transform:expanded?'rotate(180deg)':'rotate(0deg)'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6,9 12,15 18,9"/></svg>
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded&&hasFood&&<div style={{padding:'0 16px 14px'}}>
+        {/* Big calorie ring + breakdown */}
+        <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:14}}>
+          <div style={{flexShrink:0,position:'relative',width:80,height:80}}>
+            <svg width="80" height="80" viewBox="0 0 88 88" style={{transform:'rotate(-90deg)'}}>
+              <circle cx="44" cy="44" r={R} fill="none" stroke={T.border} strokeWidth="9"/>
+              <circle cx="44" cy="44" r={R} fill="none" stroke={ringColor} strokeWidth="9"
+                strokeDasharray={`${C}`} strokeDashoffset={`${C-filled}`}
+                strokeLinecap="round" style={{transition:'stroke-dashoffset .8s cubic-bezier(.4,0,.2,1)'}}/>
+            </svg>
+            <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+              <span style={{fontSize:17,fontWeight:800,color:T.text,lineHeight:1}}>{r0(total.cal)}</span>
+              <span style={{fontSize:9,color:T.text2,marginTop:1}}>kcal</span>
+            </div>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:11,color:T.text2,marginBottom:8}}>Meta de referencia: {REF.cal} kcal/día</div>
+            <div style={{display:'flex',gap:3}}>
+              {MEALS.map(meal=>{
+                const mSlot=planner[`${dKey(date)}_${meal}`]||[];
+                const mCal=mSlot.reduce((a,entry)=>{
+                  if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);return a+(f?f.cal*(entry.amount/f.serving):0);}
+                  const rec=recipes.find(r=>r.id===entry.rId);return a+(rec?calcN(rec.ingredients,foods,entry.qty||1).cal:0);
+                },0);
+                const mc=T.meal[meal];
+                const barW=total.cal>0?Math.max(4,(mCal/total.cal)*100):0;
+                return<div key={meal} title={`${meal}: ${r0(mCal)} kcal`} style={{flex:barW,minWidth:barW>0?4:0,height:6,borderRadius:3,background:mc.bc,transition:'flex .5s ease'}}/>;})}
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:5}}>
+              {MEALS.map(meal=>{const mc=T.meal[meal];const mSlot=planner[`${dKey(date)}_${meal}`]||[];const mCal=mSlot.reduce((a,entry)=>{if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);return a+(f?f.cal*(entry.amount/f.serving):0);}const rec=recipes.find(r=>r.id===entry.rId);return a+(rec?calcN(rec.ingredients,foods,entry.qty||1).cal:0);},0);
+                return<div key={meal} style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:7,height:7,borderRadius:'50%',background:mc.bc}}/><span style={{fontSize:10,color:T.text2}}>{r0(mCal)}</span></div>;})}
+            </div>
+          </div>
+        </div>
+
+        {/* Macro bars */}
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {macros.map(m=>{
+            const p=pct(m.v,m.ref);
+            return<div key={m.l}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                <span style={{fontSize:12,fontWeight:600,color:T.text}}>{m.l}</span>
+                <span style={{fontSize:12,color:T.text2}}><span style={{fontWeight:700,color:m.color}}>{m.v}{m.u}</span> / {m.ref}{m.u}</span>
+              </div>
+              <div style={{height:7,borderRadius:4,background:T.border,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${p}%`,borderRadius:4,background:m.fill,transition:'width .7s cubic-bezier(.4,0,.2,1)'}}/>
+              </div>
+            </div>;})}
+        </div>
+        <div style={{marginTop:10,fontSize:10,color:T.text3,textAlign:'center'}}>Basado en valores de referencia diarios (2000 kcal)</div>
+      </div>}
+
+      {expanded&&!hasFood&&<div style={{padding:'0 16px 16px',textAlign:'center'}}>
+        <div style={{fontSize:28,marginBottom:6}}>🍽</div>
+        <div style={{fontSize:13,color:T.text2}}>Añade comidas para ver el resumen nutricional</div>
+      </div>}
+    </div>
+  );
+}
+
 /* ── Mobile Planner ── */
 function MobilePlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
   const todayIdx=Math.max(0,dates.findIndex(d=>isToday(d)));
@@ -484,6 +610,7 @@ function MobilePlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot
         <div style={{fontSize:16,fontWeight:700,color:T.text,textTransform:'capitalize'}}>{fmt(date)}</div>
         {isToday(date)&&<span className="slide-right-enter" style={{fontSize:11,fontWeight:700,background:T.accentDark,color:T.accentText,padding:'3px 10px',borderRadius:8}}>Hoy</span>}
       </div>
+      <DayNutrSummary date={date} planner={planner} recipes={recipes} foods={foods} T={T}/>
       {MEALS.map((meal,mi)=>{const mc=T.meal[meal];const key=`${dKey(date)}_${meal}`;const slot=planner[key]||[];
         return<div key={meal} className="card-enter" style={{margin:'8px 16px',borderRadius:16,border:`1.5px solid ${T.border}`,overflow:'hidden',background:T.surface,animationDelay:`${mi*.07}s`}}>
           <div style={{padding:'12px 16px',background:mc.bg,borderBottom:`1px solid ${mc.bc}33`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -520,6 +647,32 @@ function DesktopPlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlo
       <span style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':`${fmt(dates[0])} — ${fmt(dates[6])}`}</span>
       <button onClick={()=>setWeekOff(w=>w+1)} className="tap" style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>▶</button>
       {weekOff!==0&&<button onClick={()=>setWeekOff(0)} className="tap" style={{padding:'7px 12px',borderRadius:8,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:13,fontWeight:700}}>Hoy</button>}
+    </div>
+    <div style={{marginBottom:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
+        {dates.map((d,di)=>{
+          const dayTotal=MEALS.reduce((acc,meal)=>{
+            const slot=planner[`${dKey(d)}_${meal}`]||[];
+            return slot.reduce((a,entry)=>{
+              if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);return a+(f?f.cal*(entry.amount/f.serving):0);}
+              const rec=recipes.find(r=>r.id===entry.rId);return a+(rec?calcN(rec.ingredients,foods,entry.qty||1).cal:0);
+            },acc);
+          },0);
+          const pct=Math.min(100,Math.round((dayTotal/2000)*100));
+          const C2=2*Math.PI*12,filled2=(pct/100)*C2;
+          return<div key={di} style={{padding:'8px 6px',borderRadius:8,background:isToday(d)?T.surface:T.surface2,border:`1px solid ${isToday(d)?T.accent:T.border}`,textAlign:'center'}}>
+            <div style={{fontSize:10,opacity:.65,color:T.text,marginBottom:2}}>{DAYS_SHORT[di]}</div>
+            <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:4}}>{d.getDate()}</div>
+            {dayTotal>0?<>
+              <svg width="28" height="28" viewBox="0 0 28 28" style={{transform:'rotate(-90deg)',display:'block',margin:'0 auto'}}>
+                <circle cx="14" cy="14" r="12" fill="none" stroke={T.border} strokeWidth="3"/>
+                <circle cx="14" cy="14" r="12" fill="none" stroke={T.accent} strokeWidth="3"
+                  strokeDasharray={`${C2}`} strokeDashoffset={`${C2-filled2}`} strokeLinecap="round"/>
+              </svg>
+              <div style={{fontSize:9,color:T.text2,marginTop:3}}>{r0(dayTotal)} kcal</div>
+            </>:<div style={{fontSize:9,color:T.text3,marginTop:6}}>vacío</div>}
+          </div>;})}
+      </div>
     </div>
     <div style={{overflowX:'auto'}}>
       <div style={{display:'grid',gridTemplateColumns:'50px repeat(7,minmax(100px,1fr))',gap:4,minWidth:720}}>
