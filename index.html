@@ -2,55 +2,94 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Planificador de Comidas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>Meal Planner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Space Grotesk',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:13px;}
-input,select,textarea{font-family:inherit;}
-::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{height:100%;overflow-x:hidden;}
+body{font-family:'Space Grotesk',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:14px;height:100%;overscroll-behavior:none;}
+input,select,textarea{font-family:inherit;font-size:16px!important;} /* 16px prevents iOS zoom */
+button{-webkit-appearance:none;appearance:none;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px;}
+
+/* Safe areas */
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --safe-l:   env(safe-area-inset-left, 0px);
+  --safe-r:   env(safe-area-inset-right, 0px);
+  --nav-h: 64px;
+  --header-h: 52px;
+}
+
+/* Bottom nav safe area */
+.bottom-nav{
+  padding-bottom: calc(var(--safe-bot) + 6px);
+  height: calc(var(--nav-h) + var(--safe-bot));
+}
+
+/* Main scroll area */
+.main-scroll{
+  padding-top: var(--header-h);
+  padding-bottom: calc(var(--nav-h) + var(--safe-bot) + 16px);
+  min-height: 100vh;
+}
+
+/* Bottom sheet animation */
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+
+.sheet-enter{animation:slideUp .28s cubic-bezier(.32,.72,0,1) forwards;}
+.fade-enter{animation:fadeIn .2s ease forwards;}
+.pop-enter{animation:popIn .2s cubic-bezier(.32,.72,0,1) forwards;}
+
+/* Touch feedback */
+.tap-highlight:active{opacity:.7;transform:scale(.97);}
+.tap-highlight{transition:opacity .1s,transform .1s;}
+
+/* Responsive breakpoint */
+@media(min-width:768px){
+  .mobile-only{display:none!important;}
+  .desktop-only{display:flex!important;}
+  .bottom-nav{display:none!important;}
+  .main-scroll{padding-top:var(--header-h);padding-bottom:16px;}
+  .top-nav{display:flex!important;}
+}
+@media(max-width:767px){
+  .desktop-only{display:none!important;}
+  .top-nav{display:none!important;}
+  .mobile-only{display:flex!important;}
+}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script>
-// ══════════════════════════════════════════════
-//  CONFIGURACIÓN — reemplaza con tus credenciales
-// ══════════════════════════════════════════════
-const SUPABASE_URL  = 'https://dehigkcuqoqigeikiijr.supabase.co';
-const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGlna2N1cW9xaWdlaWtpaWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDMzNDAsImV4cCI6MjA4OTQxOTM0MH0.qGxELDvYORIsKN-SBkhti_gauVivkXFvfiTWYXgzCTI';
-// ══════════════════════════════════════════════
-
+const SUPABASE_URL = 'https://dehigkcuqoqigeikiijr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGlna2N1cW9xaWdlaWtpaWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDMzNDAsImV4cCI6MjA4OTQxOTM0MH0.qGxELDvYORIsKN-SBkhti_gauVivkXFvfiTWYXgzCTI';
 const IS_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
 const db = IS_CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-async function dbLoad() {
-  if (!db) return null;
-  try {
-    const { data, error } = await db.from('app_state').select('key,value');
-    if (error) throw error;
-    return Object.fromEntries((data||[]).map(r => [r.key, r.value]));
-  } catch(e) { console.error('Load error:', e); return null; }
-}
-async function dbSave(key, value) {
-  if (!db) return;
-  try {
-    await db.from('app_state').upsert({ key, value, updated_at: new Date().toISOString() });
-  } catch(e) { console.error('Save error:', e); }
-}
+async function dbLoad(){if(!db)return null;try{const{data,error}=await db.from('app_state').select('key,value');if(error)throw error;return Object.fromEntries((data||[]).map(r=>[r.key,r.value]));}catch(e){return null;}}
+async function dbSave(key,value){if(!db)return;try{await db.from('app_state').upsert({key,value,updated_at:new Date().toISOString()});}catch(e){}}
 </script>
 <script type="text/babel">
 const {useState,useMemo,useEffect,useRef,useCallback}=React;
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DAYS_SHORT=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MEALS=['Desayuno','Almuerzo','Cena'];
+const MEAL_ICONS={Desayuno:'☀️',Almuerzo:'🌤',Cena:'🌙'};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const r0=n=>Math.round(n);
 const r1=n=>+(Math.round(n*10)/10).toFixed(1);
@@ -59,10 +98,13 @@ const isToday=d=>d.toDateString()===new Date().toDateString();
 function weekDates(off=0){const now=new Date();const dow=now.getDay();const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1)+off*7);mon.setHours(0,0,0,0);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});}
 function calcN(ingrs,foods,qty=1){return ingrs.reduce((a,{foodId,amount})=>{const f=foods.find(x=>x.id===foodId);if(!f||!amount)return a;const r=(amount/f.serving)*qty;return{cal:a.cal+f.cal*r,prot:a.prot+f.prot*r,carbs:a.carbs+f.carbs*r,fat:a.fat+f.fat*r,fiber:a.fiber+f.fiber*r};},{cal:0,prot:0,carbs:0,fat:0,fiber:0});}
 function recipeWeight(recipe){return recipe.ingredients.reduce((s,{amount,unit})=>s+(['g','ml'].includes(unit)?amount:0),0);}
+function useIsMobile(){const[m,setM]=useState(window.innerWidth<768);useEffect(()=>{const h=()=>setM(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);return m;}
 
-const THEMES={
-  jeff:{id:'jeff',name:'Jeff',emoji:'🌑',font:"'Space Grotesk',sans-serif",bg:'#0d1117',surface:'#161b22',surface2:'#21262d',accent:'#58a6ff',accentDark:'#1f6feb',accentText:'#ffffff',text:'#e6edf3',text2:'#8b949e',text3:'#484f58',border:'#30363d',border2:'#484f58',primaryBg:'#238636',primaryColor:'#ffffff',meal:{Desayuno:{bg:'#2d1f07',bc:'#d97706',tc:'#fcd34d'},Almuerzo:{bg:'#0d2818',bc:'#16a34a',tc:'#86efac'},Cena:{bg:'#0d1f4a',bc:'#3b82f6',tc:'#93c5fd'}}},
-  lia:{id:'lia',name:'Lia',emoji:'🌸',font:"'Nunito',sans-serif",bg:'#fff5f9',surface:'#ffffff',surface2:'#fce7f3',accent:'#e91e8c',accentDark:'#c2185b',accentText:'#ffffff',text:'#2d1028',text2:'#9d4e7a',text3:'#d4a0c0',border:'#f9c8df',border2:'#f48fbf',primaryBg:'#e91e8c',primaryColor:'#ffffff',meal:{Desayuno:{bg:'#fff0f9',bc:'#f472b6',tc:'#9d174d'},Almuerzo:{bg:'#faf0ff',bc:'#c084fc',tc:'#6b21a8'},Cena:{bg:'#fff1f2',bc:'#fb7185',tc:'#9f1239'}}},
+const TH={
+  jeff:{id:'jeff',name:'Jeff',emoji:'🌑',font:"'Space Grotesk',sans-serif",bg:'#0d1117',surface:'#161b22',surface2:'#21262d',accent:'#58a6ff',accentDark:'#1f6feb',accentText:'#fff',text:'#e6edf3',text2:'#8b949e',text3:'#484f58',border:'#30363d',border2:'#484f58',primaryBg:'#238636',primaryColor:'#fff',navBg:'#161b22',
+    meal:{Desayuno:{bg:'#2d1f07',bc:'#d97706',tc:'#fcd34d'},Almuerzo:{bg:'#0d2818',bc:'#16a34a',tc:'#86efac'},Cena:{bg:'#0d1f4a',bc:'#3b82f6',tc:'#93c5fd'}}},
+  lia:{id:'lia',name:'Lia',emoji:'🌸',font:"'Nunito',sans-serif",bg:'#fff5f9',surface:'#ffffff',surface2:'#fce7f3',accent:'#e91e8c',accentDark:'#c2185b',accentText:'#fff',text:'#2d1028',text2:'#9d4e7a',text3:'#d4a0c0',border:'#f9c8df',border2:'#f48fbf',primaryBg:'#e91e8c',primaryColor:'#fff',navBg:'#fff',
+    meal:{Desayuno:{bg:'#fff0f9',bc:'#f472b6',tc:'#9d174d'},Almuerzo:{bg:'#faf0ff',bc:'#c084fc',tc:'#6b21a8'},Cena:{bg:'#fff1f2',bc:'#fb7185',tc:'#9f1239'}}},
 };
 
 const FOODS0=[
@@ -89,86 +131,57 @@ const RECIPES0=[
   {id:'r5',name:'Yogur con avena',servings:1,prepTime:5,mealType:'Desayuno',desc:'Rápido y proteico',ingredients:[{foodId:'f14',amount:150,unit:'g'},{foodId:'f1',amount:40,unit:'g'},{foodId:'f7',amount:1,unit:'unidad'}],instructions:'1. Mezclar yogur con avena.\n2. Reposar 5 min.\n3. Decorar con plátano.'},
 ];
 
-// ── Setup Screen ─────────────────────────────────────────────────────────────
-function SetupScreen(){
-  const [step,setStep]=useState(1);
-  const sql=`create table if not exists app_state (
-  key text primary key,
-  value jsonb not null,
-  updated_at timestamptz default now()
-);
-alter table app_state enable row level security;
-create policy "public_rw" on app_state
-  for all using (true) with check (true);`;
-  const copy=t=>navigator.clipboard.writeText(t).catch(()=>{});
-  const steps=[
-    {title:'Crear proyecto Supabase',content:<div>
-      <p style={{fontSize:13,lineHeight:1.7,marginBottom:12}}>Ve a <a href="https://supabase.com" target="_blank" style={{color:'#3b82f6'}}>supabase.com</a>, crea una cuenta gratuita y luego un nuevo proyecto. Elige la región más cercana (ej. <em>South America</em>).</p>
-      <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:8,padding:12,fontSize:12,color:'#0c4a6e'}}>💡 El plan gratuito incluye 500MB de base de datos y es más que suficiente para esta app.</div>
-    </div>},
-    {title:'Crear la tabla',content:<div>
-      <p style={{fontSize:13,lineHeight:1.7,marginBottom:10}}>En tu proyecto de Supabase, ve a <strong>SQL Editor</strong> y ejecuta este código:</p>
-      <div style={{position:'relative'}}>
-        <pre style={{background:'#0d1117',color:'#e6edf3',borderRadius:8,padding:'12px 14px',fontSize:11,lineHeight:1.6,overflow:'auto',fontFamily:'monospace'}}>{sql}</pre>
-        <button onClick={()=>copy(sql)} style={{position:'absolute',top:8,right:8,padding:'4px 8px',borderRadius:5,border:'1px solid #30363d',background:'#21262d',color:'#8b949e',cursor:'pointer',fontSize:10,fontWeight:600}}>Copiar</button>
-      </div>
-    </div>},
-    {title:'Obtener credenciales',content:<div>
-      <p style={{fontSize:13,lineHeight:1.7,marginBottom:10}}>Ve a <strong>Settings → API</strong> en tu proyecto y copia:</p>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {[['Project URL','https://xxxxxxxxxxxx.supabase.co'],['anon public key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...(muy largo)']].map(([k,v])=><div key={k} style={{background:'#f5f5f0',borderRadius:7,padding:'9px 12px',border:'1px solid #e0e0e0'}}>
-          <div style={{fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:3}}>{k}</div>
-          <div style={{fontSize:11,color:'#888',fontFamily:'monospace'}}>{v}</div>
-        </div>)}
-      </div>
-    </div>},
-    {title:'Configurar el archivo HTML',content:<div>
-      <p style={{fontSize:13,lineHeight:1.7,marginBottom:10}}>Abre el archivo <code style={{background:'#f5f5f0',padding:'1px 5px',borderRadius:4,fontSize:12}}>planificador_comidas.html</code> con un editor de texto (Notepad, TextEdit, VS Code) y reemplaza las líneas al inicio:</p>
-      <pre style={{background:'#0d1117',color:'#e6edf3',borderRadius:8,padding:'12px 14px',fontSize:11,lineHeight:1.8,fontFamily:'monospace'}}>{`const SUPABASE_URL = 'https://tu-proyecto.supabase.co';\nconst SUPABASE_KEY = 'tu-anon-key-aqui';`}</pre>
-      <p style={{fontSize:12,color:'#666',marginTop:10}}>Luego guarda el archivo y súbelo a GitHub Pages o Netlify. ¡Listo!</p>
-    </div>},
-  ];
-  return <div style={{minHeight:'100vh',background:'#f5f5f0',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-    <div style={{background:'#fff',borderRadius:16,border:'1px solid #e0e0e0',boxShadow:'0 8px 32px rgba(0,0,0,.08)',maxWidth:520,width:'100%',overflow:'hidden',animation:'fadein .4s ease'}}>
-      <div style={{background:'linear-gradient(135deg,#1a3d0b,#2d6e1e)',padding:'24px 28px',color:'#fff'}}>
-        <div style={{fontSize:28,marginBottom:8}}>🥗</div>
-        <div style={{fontSize:20,fontWeight:800}}>Meal Planner</div>
-        <div style={{fontSize:13,opacity:.8,marginTop:4}}>Configura la base de datos para usar la app en cualquier dispositivo</div>
-      </div>
-      <div style={{padding:28}}>
-        <div style={{display:'flex',gap:4,marginBottom:24}}>
-          {steps.map((_,i)=><div key={i} style={{flex:1,height:4,borderRadius:2,background:i<step?'#1a3d0b':i===step-1?'#1a3d0b':'#e0e0e0',opacity:i<step?1:i===step-1?1:.4}}/>)}
-        </div>
-        <div style={{fontSize:11,fontWeight:700,color:'#1a3d0b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:6}}>Paso {step} de {steps.length}</div>
-        <div style={{fontSize:17,fontWeight:700,marginBottom:16}}>{steps[step-1].title}</div>
-        {steps[step-1].content}
-        <div style={{display:'flex',gap:8,marginTop:24}}>
-          {step>1&&<button onClick={()=>setStep(s=>s-1)} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:13,fontWeight:600}}>← Anterior</button>}
-          {step<steps.length?<button onClick={()=>setStep(s=>s+1)} style={{flex:2,padding:'10px',borderRadius:8,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Siguiente →</button>
-          :<div style={{flex:2,background:'#f0fdf4',border:'1px solid #86efac',borderRadius:8,padding:'10px',textAlign:'center',fontSize:13,color:'#14532D',fontWeight:600}}>✓ ¡Sigue las instrucciones del paso 4!</div>}
-        </div>
-      </div>
-    </div>
-  </div>;
-}
-
-// ── Shared UI ────────────────────────────────────────────────────────────────
+// ── Shared primitives ─────────────────────────────────────────────────────────
 function NutrBar({n,servings=1,compact}){
   const items=[{l:'Kcal',v:r0(n.cal/servings),c:'#92400E',bg:'#FEF3C7'},{l:'Prot',v:r1(n.prot/servings)+'g',c:'#14532D',bg:'#DCFCE7'},{l:'Carbs',v:r1(n.carbs/servings)+'g',c:'#1E3A8A',bg:'#EFF6FF'},{l:'Grasa',v:r1(n.fat/servings)+'g',c:'#581C87',bg:'#F5F3FF'},{l:'Fibra',v:r1(n.fiber/servings)+'g',c:'#7C2D12',bg:'#FFF7ED'}];
-  return <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>{items.map(it=><div key={it.l} style={{textAlign:'center',padding:compact?'4px 2px':'7px 2px',borderRadius:6,background:it.bg}}><div style={{fontSize:compact?11:13,fontWeight:700,color:it.c}}>{it.v}</div><div style={{fontSize:9,color:it.c,opacity:.7}}>{it.l}</div></div>)}</div>;
+  return <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>{items.map(it=><div key={it.l} style={{textAlign:'center',padding:compact?'5px 2px':'8px 2px',borderRadius:8,background:it.bg}}><div style={{fontSize:compact?12:15,fontWeight:700,color:it.c}}>{it.v}</div><div style={{fontSize:10,color:it.c,opacity:.7,marginTop:1}}>{it.l}</div></div>)}</div>;
 }
-function CloseBtn({onClick,T}){return <button onClick={onClick} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:T?T.text2:'#666',display:'flex',alignItems:'center'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>;}
-function PrimaryBtn({children,onClick,T,disabled,style={}}){return <button onClick={onClick} disabled={disabled} style={{padding:'8px 14px',borderRadius:7,border:'none',background:T?T.primaryBg:'#1a3d0b',color:T?T.primaryColor:'#fff',cursor:disabled?'not-allowed':'pointer',fontSize:12,fontWeight:700,opacity:disabled?.5:1,...style}}>{children}</button>;}
-function GhostBtn({children,onClick,T,style={}}){return <button onClick={onClick} style={{padding:'8px 14px',borderRadius:7,border:`1px solid ${T?T.border2:'#ccc'}`,background:T?T.surface2:'#f5f5f0',color:T?T.text:'#1a1a1a',cursor:'pointer',fontSize:12,fontWeight:600,...style}}>{children}</button>;}
-function TBtn({children,onClick,active,T}){return <button onClick={onClick} style={{flex:1,padding:'8px 6px',borderRadius:6,border:`1px solid ${active?T.accent:T.border}`,background:active?T.accentDark:T.surface2,color:active?T.accentText:T.text2,cursor:'pointer',fontSize:12,fontWeight:700}}>{children}</button>;}
-function LF({t,children}){return <div style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:'#666',marginBottom:4,textTransform:'uppercase',letterSpacing:'.4px'}}>{t}</div>{children}</div>;}
-function I({style={},...p}){return <input {...p} style={{width:'100%',padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,background:'#fff',color:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}/>;}
-function S({children,...p}){return <select {...p} style={{width:'100%',padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,background:'#fff',color:'#1a1a1a',outline:'none',fontFamily:'inherit'}}>{children}</select>;}
+function CloseBtn({onClick,T,size=40}){return <button onClick={onClick} style={{width:size,height:size,borderRadius:'50%',background:T?T.surface2:'#f5f5f0',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T?T.text2:'#666',flexShrink:0}}>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+</button>;}
+function PrimaryBtn({children,onClick,T,disabled,style={},full}){return <button onClick={onClick} disabled={disabled} className="tap-highlight" style={{padding:'13px 20px',borderRadius:12,border:'none',background:T?T.primaryBg:'#1a3d0b',color:T?T.primaryColor:'#fff',cursor:disabled?'not-allowed':'pointer',fontSize:14,fontWeight:700,opacity:disabled?.45:1,width:full?'100%':undefined,display:'flex',alignItems:'center',justifyContent:'center',gap:6,...style}}>{children}</button>;}
+function GhostBtn({children,onClick,T,style={}}){return <button onClick={onClick} className="tap-highlight" style={{padding:'13px 20px',borderRadius:12,border:`1.5px solid ${T?T.border2:'#ccc'}`,background:'transparent',color:T?T.text:'#1a1a1a',cursor:'pointer',fontSize:14,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6,...style}}>{children}</button>;}
+function SmBtn({children,onClick,v='ghost',style={}}){
+  const s={primary:{background:'#1a3d0b',color:'#fff',border:'none'},danger:{background:'#fee2e2',color:'#991b1b',border:'1px solid #fecaca'},ghost:{background:'#f5f5f0',color:'#444',border:'1px solid #ddd'}};
+  return <button onClick={onClick} className="tap-highlight" style={{padding:'8px 12px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,display:'inline-flex',alignItems:'center',gap:4,...(s[v]||s.ghost),...style}}>{children}</button>;
+}
+
+function LF({t,children,T}){return <div style={{marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:T?T.text2:'#666',marginBottom:5,textTransform:'uppercase',letterSpacing:'.5px'}}>{t}</div>{children}</div>;}
+function Inp({T,style={},...p}){return <input {...p} style={{width:'100%',padding:'13px 14px',fontSize:16,border:`1.5px solid ${T?T.border2:'#ddd'}`,borderRadius:10,background:T?T.surface2:'#fff',color:T?T.text:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}/>;}
+function Sel({T,children,style={},...p}){return <select {...p} style={{width:'100%',padding:'13px 14px',fontSize:16,border:`1.5px solid ${T?T.border2:'#ddd'}`,borderRadius:10,background:T?T.surface2:'#fff',color:T?T.text:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}>{children}</select>;}
 
 function slotLabel(entry,recipes,foods){
   if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);return f?`${f.name} (${entry.amount}${entry.unit})`:'?';}
   const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return '?';
   return entry.qty&&entry.qty!==1?`${rec.name} ×${r1(entry.qty)}`:rec.name;
+}
+
+// ── Bottom Sheet wrapper ──────────────────────────────────────────────────────
+function Sheet({open,onClose,children,T,title,subtitle,maxH='90vh'}){
+  const isMobile=useIsMobile();
+  if(!open)return null;
+  if(!isMobile)return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'52px 16px 16px',overflowY:'auto'}} className="fade-enter">
+      <div onClick={e=>e.stopPropagation()} style={{background:T?T.surface:'#fff',borderRadius:16,border:`1px solid ${T?T.border:'#e0e0e0'}`,boxShadow:'0 24px 64px rgba(0,0,0,.2)',width:'100%',maxWidth:500,maxHeight:'85vh',overflowY:'auto',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}} className="pop-enter">
+        {children}
+      </div>
+    </div>
+  );
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.5)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}} className="fade-enter">
+      <div onClick={e=>e.stopPropagation()} style={{background:T?T.surface:'#fff',borderRadius:'20px 20px 0 0',maxHeight:maxH,display:'flex',flexDirection:'column',paddingBottom:'calc(var(--safe-bot) + 8px)',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}} className="sheet-enter">
+        {/* Handle */}
+        <div style={{padding:'10px 0 6px',display:'flex',justifyContent:'center',flexShrink:0}}>
+          <div style={{width:40,height:4,borderRadius:2,background:T?T.border2:'#ddd'}}/>
+        </div>
+        {(title||subtitle)&&<div style={{padding:'4px 20px 14px',borderBottom:`1px solid ${T?T.border:'#f0f0f0'}`,flexShrink:0,display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+          <div><div style={{fontSize:17,fontWeight:700,color:T?T.text:'#1a1a1a'}}>{title}</div>{subtitle&&<div style={{fontSize:13,color:T?T.text2:'#666',marginTop:3}}>{subtitle}</div>}</div>
+          <CloseBtn onClick={onClose} T={T}/>
+        </div>}
+        <div style={{overflowY:'auto',flex:1}}>{children}</div>
+      </div>
+    </div>
+  );
 }
 
 // ── QtyPicker ─────────────────────────────────────────────────────────────────
@@ -182,31 +195,38 @@ function QtyPicker({recipe,foods,T,onConfirm,onBack}){
   const effQty=mode==='porciones'?qty:(rw>0&&+exactAmt>0?(+exactAmt/rw)*recipe.servings:1);
   const baseN=calcN(recipe.ingredients,foods,1);
   const confirm=()=>{if(mode==='porciones')onConfirm(qty);else if(rw>0&&+exactAmt>0)onConfirm(r1((+exactAmt/rw)*recipe.servings));else onConfirm(1);};
-  return <div style={{padding:'14px 20px',background:T.surface}}>
-    <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:2}}>{recipe.name}</div>
-    <div style={{fontSize:11,color:T.text2,marginBottom:14}}>Define la cantidad a registrar</div>
-    <div style={{display:'flex',gap:6,marginBottom:16}}><TBtn active={mode==='porciones'} T={T} onClick={()=>setMode('porciones')}>Por porciones</TBtn><TBtn active={mode==='exacto'} T={T} onClick={()=>setMode('exacto')}>Cantidad en g/ml</TBtn></div>
-    {mode==='porciones'?<div style={{marginBottom:14}}>
-      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Porciones — base: {recipe.servings}</div>
-      <div style={{display:'flex',alignItems:'center',gap:12}}>
-        <button onClick={()=>setQty(q=>clamp(q-.5))} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
-        <div style={{flex:1,textAlign:'center'}}><span style={{fontSize:30,fontWeight:800,color:T.accent}}>{qty}</span><span style={{fontSize:13,color:T.text2,marginLeft:6}}>porción{qty!==1?'es':''}</span></div>
-        <button onClick={()=>setQty(q=>q+.5)} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+  return <div style={{padding:'16px 20px 8px',background:T.surface}}>
+    <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:2}}>{recipe.name}</div>
+    <div style={{fontSize:13,color:T.text2,marginBottom:16}}>Define la cantidad a registrar</div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:20}}>
+      {[['porciones','Por porciones'],['exacto','En g / ml']].map(([m,lbl])=><button key={m} onClick={()=>setMode(m)} style={{padding:'11px',borderRadius:10,border:`1.5px solid ${mode===m?T.accent:T.border}`,background:mode===m?T.accentDark:T.surface2,color:mode===m?T.accentText:T.text2,cursor:'pointer',fontSize:13,fontWeight:700}}>{lbl}</button>)}
+    </div>
+    {mode==='porciones'?<div style={{marginBottom:20}}>
+      <div style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:14}}>Porciones — base: {recipe.servings}</div>
+      <div style={{display:'flex',alignItems:'center',gap:16}}>
+        <button onClick={()=>setQty(q=>clamp(q-.5))} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+        <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:40,fontWeight:800,color:T.accent,lineHeight:1}}>{qty}</div><div style={{fontSize:13,color:T.text2,marginTop:4}}>porción{qty!==1?'es':''}</div></div>
+        <button onClick={()=>setQty(q=>q+.5)} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
       </div>
-    </div>:<div style={{marginBottom:14}}>
-      {rw===0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:6,padding:'7px 10px',marginBottom:10,fontSize:11,color:'#92400E'}}>⚠ Sin ingredientes en g/ml. Usa porciones.</div>}
-      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8}}>Peso total receta: {rw>0?rw+' g/ml':'no disponible'}</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,marginBottom:8}}>
-        <input type="number" min="0" value={exactAmt} onChange={e=>setExactAmt(e.target.value)} placeholder={rw>0?`Ej: ${r0(rw/recipe.servings)}`:'cantidad'} style={{padding:'10px',fontSize:16,fontWeight:700,border:`1px solid ${T.border2}`,borderRadius:7,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
-        <select value={exactUnit} onChange={e=>setExactUnit(e.target.value)} style={{padding:'10px',fontSize:13,border:`1px solid ${T.border2}`,borderRadius:7,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}><option value="g">g</option><option value="ml">ml</option></select>
+    </div>:<div style={{marginBottom:20}}>
+      {rw===0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 12px',marginBottom:12,fontSize:13,color:'#92400E'}}>⚠ Sin ingredientes en g/ml. Usa porciones.</div>}
+      <div style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Peso total receta: {rw>0?rw+' g/ml':'no disponible'}</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 90px',gap:10,marginBottom:10}}>
+        <input type="number" inputMode="decimal" min="0" value={exactAmt} onChange={e=>setExactAmt(e.target.value)} placeholder={rw>0?String(r0(rw/recipe.servings)):'0'} style={{padding:'14px',fontSize:20,fontWeight:700,border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
+        <select value={exactUnit} onChange={e=>setExactUnit(e.target.value)} style={{padding:'14px',fontSize:16,border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}>
+          <option value="g">g</option><option value="ml">ml</option>
+        </select>
       </div>
-      {+exactAmt>0&&rw>0&&<div style={{fontSize:11,color:T.text2}}>≈ {r1((+exactAmt/rw)*recipe.servings)} porciones</div>}
+      {+exactAmt>0&&rw>0&&<div style={{fontSize:13,color:T.text2}}>≈ {r1((+exactAmt/rw)*recipe.servings)} porciones</div>}
     </div>}
-    <div style={{background:T.surface2,borderRadius:8,padding:'10px 12px',marginBottom:14,border:`1px solid ${T.border}`}}>
-      <div style={{fontSize:9,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición total</div>
+    <div style={{background:T.surface2,borderRadius:12,padding:'12px',marginBottom:16,border:`1px solid ${T.border}`}}>
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8}}>Nutrición total</div>
       <NutrBar n={baseN} servings={1/Math.max(0.01,effQty)} compact/>
     </div>
-    <div style={{display:'flex',gap:7}}><GhostBtn onClick={onBack} T={T} style={{flex:1}}>← Volver</GhostBtn><PrimaryBtn onClick={confirm} T={T} style={{flex:2}}>Confirmar</PrimaryBtn></div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:10,paddingBottom:8}}>
+      <GhostBtn onClick={onBack} T={T}>← Volver</GhostBtn>
+      <PrimaryBtn onClick={confirm} T={T}>Confirmar</PrimaryBtn>
+    </div>
   </div>;
 }
 
@@ -214,139 +234,269 @@ function QtyPicker({recipe,foods,T,onConfirm,onBack}){
 function FoodAmountPicker({food,T,onConfirm,onBack}){
   const [amount,setAmount]=useState(food.serving);
   const n=useMemo(()=>{if(!amount)return{cal:0,prot:0,carbs:0,fat:0,fiber:0};const r=amount/food.serving;return{cal:food.cal*r,prot:food.prot*r,carbs:food.carbs*r,fat:food.fat*r,fiber:food.fiber*r};},[amount,food]);
-  return <div style={{padding:'14px 20px',background:T.surface}}>
-    <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:2}}>{food.name}</div>
-    <div style={{fontSize:11,color:T.text2,marginBottom:16}}>¿Cuánto vas a consumir?</div>
-    <div style={{marginBottom:16}}>
-      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Cantidad ({food.unit})</div>
-      <div style={{display:'flex',alignItems:'center',gap:10}}>
-        <button onClick={()=>setAmount(a=>Math.max(0,a-food.serving))} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
-        <div style={{flex:1,position:'relative'}}>
-          <input type="number" min="0" value={amount} onChange={e=>setAmount(+e.target.value||0)} style={{width:'100%',padding:'10px 40px 10px 10px',fontSize:16,fontWeight:700,textAlign:'center',border:`1px solid ${T.border2}`,borderRadius:7,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
-          <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',fontSize:11,color:T.text2,pointerEvents:'none'}}>{food.unit}</span>
-        </div>
-        <button onClick={()=>setAmount(a=>a+food.serving)} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+  return <div style={{padding:'16px 20px 8px',background:T.surface}}>
+    <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:2}}>{food.name}</div>
+    <div style={{fontSize:13,color:T.text2,marginBottom:20}}>¿Cuánto vas a consumir?</div>
+    <div style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:14}}>Cantidad ({food.unit})</div>
+    <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
+      <button onClick={()=>setAmount(a=>Math.max(0,a-food.serving))} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+      <div style={{flex:1,position:'relative'}}>
+        <input type="number" inputMode="decimal" min="0" value={amount} onChange={e=>setAmount(+e.target.value||0)} style={{width:'100%',padding:'14px 50px 14px 16px',fontSize:20,fontWeight:700,textAlign:'center',border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
+        <span style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',fontSize:13,color:T.text2,pointerEvents:'none'}}>{food.unit}</span>
       </div>
+      <button onClick={()=>setAmount(a=>a+food.serving)} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
     </div>
-    {amount>0&&<div style={{background:T.surface2,borderRadius:8,padding:'10px 12px',marginBottom:14,border:`1px solid ${T.border}`}}><div style={{fontSize:9,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición</div><NutrBar n={n} compact/></div>}
-    <div style={{display:'flex',gap:7}}><GhostBtn onClick={onBack} T={T} style={{flex:1}}>← Volver</GhostBtn><PrimaryBtn onClick={()=>amount>0&&onConfirm({foodId:food.id,amount,unit:food.unit})} T={T} disabled={!amount} style={{flex:2}}>Confirmar</PrimaryBtn></div>
+    {amount>0&&<div style={{background:T.surface2,borderRadius:12,padding:'12px',marginBottom:16,border:`1px solid ${T.border}`}}>
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8}}>Nutrición</div>
+      <NutrBar n={n} compact/>
+    </div>}
+    <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:10,paddingBottom:8}}>
+      <GhostBtn onClick={onBack} T={T}>← Volver</GhostBtn>
+      <PrimaryBtn onClick={()=>amount>0&&onConfirm({foodId:food.id,amount,unit:food.unit})} T={T} disabled={!amount}>Confirmar</PrimaryBtn>
+    </div>
   </div>;
 }
 
-// ── AddSlotModal ──────────────────────────────────────────────────────────────
-function AddSlotModal({date,meal,recipes,foods,pantry,addToSlot,T,close}){
+// ── AddSlot Sheet ─────────────────────────────────────────────────────────────
+function AddSlotSheet({date,meal,recipes,foods,pantry,addToSlot,T,close}){
   const [listTab,setListTab]=useState('recetas');const [q,setQ]=useState('');const [selRec,setSelRec]=useState(null);const [selFood,setSelFood]=useState(null);
-  const mc=T.meal[meal];const fmt=d=>d.toLocaleDateString('es-CO',{day:'numeric',month:'long'});
+  const mc=T.meal[meal];
   const getMissR=rec=>rec.ingredients.filter(({foodId,amount})=>(pantry.find(p=>p.foodId===foodId)?.amount||0)<amount).length;
   const recList=recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase()));
   const foodList=foods.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
   const slotKey=`${dKey(date)}_${meal}`;
   const step=selRec?'qtyR':selFood?'qtyF':'list';
-  return <>
-    <div style={{padding:'14px 18px 12px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'flex-start',gap:8,background:T.surface}}>
-      <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:T.text}}>{step==='list'?'Añadir':'Cantidad'}</div><div style={{fontSize:11,color:T.text2,marginTop:3}}><span style={{background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,padding:'1px 6px',borderRadius:9,fontSize:9,fontWeight:700}}>{meal}</span> · {DAYS[(date.getDay()+6)%7]}, {fmt(date)}</div></div>
-      <CloseBtn onClick={close} T={T}/>
-    </div>
+  const fmt=d=>d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
+  return <Sheet open onClose={close} T={T}
+    title={step==='list'?'Añadir al planificador':'Cantidad'}
+    subtitle={step==='list'?<span><span style={{background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:700}}>{MEAL_ICONS[meal]} {meal}</span> · {fmt(date)}</span>:undefined}
+    maxH="92vh">
     {step==='qtyR'&&<QtyPicker recipe={selRec} foods={foods} T={T} onConfirm={qty=>{addToSlot(slotKey,{type:'recipe',rId:selRec.id,qty});close();}} onBack={()=>setSelRec(null)}/>}
     {step==='qtyF'&&<FoodAmountPicker food={selFood} T={T} onConfirm={e=>{addToSlot(slotKey,{type:'food',...e});close();}} onBack={()=>setSelFood(null)}/>}
-    {step==='list'&&<div style={{background:T.surface}}>
-      <div style={{display:'flex',borderBottom:`1px solid ${T.border}`,padding:'0 18px'}}>
-        {[['recetas','📖 Recetas'],['alimentos','🥦 Alimentos']].map(([id,lbl])=><button key={id} onClick={()=>{setListTab(id);setQ('');}} style={{padding:'9px 12px',border:'none',borderBottom:listTab===id?`2px solid ${T.accent}`:'2px solid transparent',background:'none',cursor:'pointer',fontSize:12,fontWeight:700,color:listTab===id?T.accent:T.text2}}>{lbl}</button>)}
+    {step==='list'&&<div>
+      <div style={{display:'flex',borderBottom:`1px solid ${T.border}`,paddingLeft:4}}>
+        {[['recetas','📖 Recetas'],['alimentos','🥦 Alimentos']].map(([id,lbl])=><button key={id} onClick={()=>{setListTab(id);setQ('');}} style={{flex:1,padding:'14px 8px',border:'none',borderBottom:listTab===id?`2.5px solid ${T.accent}`:'2.5px solid transparent',background:'none',cursor:'pointer',fontSize:13,fontWeight:700,color:listTab===id?T.accent:T.text2}}>{lbl}</button>)}
       </div>
-      <div style={{padding:'12px 18px'}}>
-        <input style={{width:'100%',padding:'7px 9px',fontSize:12,border:`1px solid ${T.border2}`,borderRadius:6,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit',marginBottom:10}} placeholder={`Buscar ${listTab}...`} value={q} onChange={e=>setQ(e.target.value)} autoFocus/>
-        <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:300,overflowY:'auto'}}>
+      <div style={{padding:'14px 16px 0'}}>
+        <div style={{position:'relative',marginBottom:12}}>
+          <svg style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',color:T.text2}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input autoFocus style={{width:'100%',padding:'12px 12px 12px 40px',fontSize:15,border:`1.5px solid ${T.border2}`,borderRadius:12,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}} placeholder={`Buscar ${listTab}...`} value={q} onChange={e=>setQ(e.target.value)}/>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:6}}>
           {listTab==='recetas'&&recList.map(rec=>{const n=calcN(rec.ingredients,foods);const miss=getMissR(rec);const rmc=T.meal[rec.mealType]||T.meal.Almuerzo;
-            return<div key={rec.id} onClick={()=>setSelRec(rec)} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 11px',borderRadius:8,border:`1px solid ${T.border}`,background:T.surface,cursor:'pointer'}} onMouseOver={e=>e.currentTarget.style.borderColor=T.accent} onMouseOut={e=>e.currentTarget.style.borderColor=T.border}>
-              <div style={{flex:1}}><div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}><span style={{fontSize:12,fontWeight:700,color:T.text}}>{rec.name}</span><span style={{fontSize:9,background:rmc.bg,color:rmc.tc,padding:'0 5px',borderRadius:7,border:`1px solid ${rmc.bc}`}}>{rec.mealType}</span></div><div style={{fontSize:10,color:T.text2}}>{r0(n.cal/rec.servings)} kcal · {r1(n.prot/rec.servings)}g prot</div></div>
-              {miss>0&&<span style={{fontSize:9,background:'#FEF3C7',color:'#92400E',padding:'1px 5px',borderRadius:7,border:'1px solid #F59E0B',flexShrink:0}}>⚠{miss}</span>}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
-            </div>;})}
-          {listTab==='alimentos'&&foodList.map(food=><div key={food.id} onClick={()=>setSelFood(food)} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 11px',borderRadius:8,border:`1px solid ${T.border}`,background:T.surface,cursor:'pointer'}} onMouseOver={e=>e.currentTarget.style.borderColor=T.accent} onMouseOut={e=>e.currentTarget.style.borderColor=T.border}>
-            <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>{food.name}</div><div style={{fontSize:10,color:T.text2}}>{food.serving}{food.unit} · {food.cal} kcal · {food.prot}g prot</div></div>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
-          </div>)}
-          {((listTab==='recetas'&&recList.length===0)||(listTab==='alimentos'&&foodList.length===0))&&<div style={{textAlign:'center',padding:20,color:T.text2,fontSize:12}}>Sin resultados.</div>}
+            return<button key={rec.id} onClick={()=>setSelRec(rec)} className="tap-highlight" style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,cursor:'pointer',textAlign:'left',width:'100%'}}>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
+                  <span style={{fontSize:14,fontWeight:700,color:T.text}}>{rec.name}</span>
+                  <span style={{fontSize:10,background:rmc.bg,color:rmc.tc,padding:'2px 6px',borderRadius:6,border:`1px solid ${rmc.bc}`,fontWeight:700,flexShrink:0}}>{rec.mealType}</span>
+                </div>
+                <div style={{fontSize:12,color:T.text2}}>{r0(n.cal/rec.servings)} kcal · {r1(n.prot/rec.servings)}g prot · {rec.prepTime}min</div>
+              </div>
+              {miss>0&&<span style={{fontSize:10,background:'#FEF3C7',color:'#92400E',padding:'3px 7px',borderRadius:8,border:'1px solid #F59E0B',flexShrink:0}}>⚠ {miss}</span>}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+            </button>;})}
+          {listTab==='alimentos'&&foodList.map(food=><button key={food.id} onClick={()=>setSelFood(food)} className="tap-highlight" style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,cursor:'pointer',textAlign:'left',width:'100%'}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:3}}>{food.name}</div>
+              <div style={{fontSize:12,color:T.text2}}>{food.serving}{food.unit} · {food.cal} kcal · {food.prot}g prot</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+          </button>)}
+          {((listTab==='recetas'&&recList.length===0)||(listTab==='alimentos'&&foodList.length===0))&&<div style={{textAlign:'center',padding:'30px 20px',color:T.text2,fontSize:14}}>Sin resultados.</div>}
+          <div style={{height:8}}/>
         </div>
       </div>
     </div>}
-  </>;
+  </Sheet>;
 }
 
-// ── PlanRecipeModal ───────────────────────────────────────────────────────────
-function PlanRecipeModal({recipe,dates,addToSlot,foods,T,close}){
+// ── PlanRecipeSheet ───────────────────────────────────────────────────────────
+function PlanRecipeSheet({recipe,dates,addToSlot,foods,T,close}){
   const [selD,setSelD]=useState(null);const [selM,setSelM]=useState('');const [step,setStep]=useState(1);
-  return <>
-    <div style={{padding:'14px 18px 12px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',gap:8,background:T.surface}}>
-      <div style={{fontSize:14,fontWeight:700,color:T.text,flex:1}}>{step===1?`Planificar: ${recipe.name}`:'Cantidad'}</div>
-      <CloseBtn onClick={close} T={T}/>
-    </div>
-    {step===1?<div style={{padding:'14px 18px',background:T.surface}}>
-      <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8}}>Día</div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3}}>
-          {dates.map((d,i)=>{const sel=selD&&dKey(selD)===dKey(d);return<button key={i} onClick={()=>setSelD(d)} style={{padding:'6px 2px',borderRadius:6,border:`1px solid ${sel?T.accent:T.border}`,background:sel?T.accentDark:T.surface2,color:sel?T.accentText:T.text,cursor:'pointer',textAlign:'center'}}>
-            <div style={{fontSize:8,color:sel?T.accentText:T.text2}}>{DAYS[i].slice(0,3)}</div>
-            <div style={{fontSize:12,fontWeight:700}}>{d.getDate()}</div>
+  return <Sheet open onClose={close} T={T} title={step===1?'Planificar receta':'Cantidad'} subtitle={step===1?recipe.name:undefined} maxH="92vh">
+    {step===1?<div style={{padding:'16px 20px 8px'}}>
+      <LF t="Día" T={T}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
+          {dates.map((d,i)=>{const sel=selD&&dKey(selD)===dKey(d);const today=isToday(d);return<button key={i} onClick={()=>setSelD(d)} className="tap-highlight" style={{padding:'8px 2px',borderRadius:10,border:`1.5px solid ${sel?T.accent:today?T.accent:T.border}`,background:sel?T.accentDark:today?T.surface2:T.surface2,color:sel?T.accentText:T.text,cursor:'pointer',textAlign:'center'}}>
+            <div style={{fontSize:9,color:sel?T.accentText:T.text2,marginBottom:2}}>{DAYS_SHORT[i]}</div>
+            <div style={{fontSize:14,fontWeight:700}}>{d.getDate()}</div>
+            {today&&!sel&&<div style={{width:4,height:4,borderRadius:'50%',background:T.accent,margin:'2px auto 0'}}/>}
           </button>;})}
         </div>
-      </div>
-      <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8}}>Comida</div>
-        <div style={{display:'flex',gap:6}}>{MEALS.map(m=>{const mc=T.meal[m];const act=selM===m;return<button key={m} onClick={()=>setSelM(m)} style={{flex:1,padding:'8px 4px',borderRadius:7,border:`1px solid ${act?mc.bc:T.border}`,background:act?mc.bg:T.surface2,color:act?mc.tc:T.text,cursor:'pointer',fontSize:11,fontWeight:act?700:500}}>{m}</button>;})}</div>
-      </div>
-      <PrimaryBtn onClick={()=>setStep(2)} T={T} disabled={!selD||!selM} style={{width:'100%',justifyContent:'center'}}>Siguiente →</PrimaryBtn>
+      </LF>
+      <LF t="Comida" T={T}>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {MEALS.map(m=>{const mc=T.meal[m];const act=selM===m;return<button key={m} onClick={()=>setSelM(m)} className="tap-highlight" style={{padding:'14px 16px',borderRadius:12,border:`1.5px solid ${act?mc.bc:T.border}`,background:act?mc.bg:T.surface2,color:act?mc.tc:T.text,cursor:'pointer',fontSize:14,fontWeight:act?700:500,display:'flex',alignItems:'center',gap:10,textAlign:'left'}}>
+            <span style={{fontSize:18}}>{MEAL_ICONS[m]}</span>{m}
+            {act&&<svg style={{marginLeft:'auto'}} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>}
+          </button>;})}
+        </div>
+      </LF>
+      <PrimaryBtn onClick={()=>setStep(2)} T={T} disabled={!selD||!selM} full style={{marginTop:8,marginBottom:8}}>Siguiente →</PrimaryBtn>
     </div>:<QtyPicker recipe={recipe} foods={foods} T={T} onConfirm={qty=>{addToSlot(`${dKey(selD)}_${selM}`,{type:'recipe',rId:recipe.id,qty});close();}} onBack={()=>setStep(1)}/>}
-  </>;
+  </Sheet>;
 }
 
-// ── DetailModal ───────────────────────────────────────────────────────────────
-function DetailModal({recipe,foods,pantry,T,close,setModal}){
+// ── Detail Sheet ──────────────────────────────────────────────────────────────
+function DetailSheet({recipe,foods,pantry,T,close,setModal}){
   const FALLBACK={Desayuno:{bg:'#FFFBEB',bc:'#F59E0B',tc:'#78350F'},Almuerzo:{bg:'#F0FDF4',bc:'#22C55E',tc:'#14532D'},Cena:{bg:'#EFF6FF',bc:'#3B82F6',tc:'#1E3A8A'}};
   const mc=(T?T.meal:FALLBACK)[recipe.mealType]||FALLBACK.Almuerzo;
   const n=calcN(recipe.ingredients,foods);
   const ts=T||{surface:'#fff',text:'#1a1a1a',text2:'#666',border:'#e0e0e0',surface2:'#f5f5f0'};
   const missing=recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const have=pantry.find(p=>p.foodId===foodId)?.amount||0;if(have<amount)return{f,needed:amount,have,unit};return null;}).filter(Boolean);
-  return <>
-    <div style={{padding:'14px 18px 12px',borderBottom:`1px solid ${ts.border}`,display:'flex',alignItems:'flex-start',gap:8,background:ts.surface}}>
-      <div style={{flex:1}}><span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:6}}>{recipe.mealType}</span><div style={{fontSize:15,fontWeight:700,color:ts.text}}>{recipe.name}</div><div style={{fontSize:11,color:ts.text2,marginTop:2}}>{recipe.desc}</div></div>
-      <CloseBtn onClick={close} T={ts}/>
-    </div>
-    <div style={{padding:'14px 18px',background:ts.surface}}>
-      <div style={{fontSize:12,color:ts.text2,marginBottom:12}}>⏱ {recipe.prepTime} min · 👥 {recipe.servings} porción{recipe.servings>1?'es':''}</div>
-      {missing.length>0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:6,padding:'8px 10px',marginBottom:10,fontSize:11,color:'#92400E'}}><div style={{fontWeight:700,marginBottom:3}}>⚠ Faltantes:</div>{missing.map(({f,needed,have,unit})=><div key={f.id}>• {f.name}: necesitas {needed}{unit}, tienes {have}</div>)}</div>}
-      <div style={{marginBottom:12}}><div style={{fontSize:9,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición por porción</div><NutrBar n={n} servings={recipe.servings}/></div>
-      <div style={{marginBottom:12}}><div style={{fontSize:9,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Ingredientes</div>
-        {recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const ok=(pantry.find(p=>p.foodId===foodId)?.amount||0)>=amount;return f?<div key={foodId} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:`1px solid ${ts.border}`,fontSize:11,color:ts.text}}><span>{f.name}</span><div style={{display:'flex',gap:6,alignItems:'center'}}><span style={{color:ts.text2}}>{amount} {unit}</span><span style={{fontSize:9,background:ok?'#DCFCE7':'#FEF3C7',color:ok?'#14532D':'#92400E',padding:'1px 5px',borderRadius:8}}>{ok?'✓':'⚠'}</span></div></div>:null;})}
+  return <Sheet open onClose={close} T={T} maxH="95vh">
+    <div style={{padding:'8px 20px 16px',background:ts.surface}}>
+      <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:10}}>{MEAL_ICONS[recipe.mealType]} {recipe.mealType}</span>
+      <div style={{fontSize:20,fontWeight:800,color:ts.text,lineHeight:1.2,marginBottom:4}}>{recipe.name}</div>
+      <div style={{fontSize:14,color:ts.text2,marginBottom:16}}>{recipe.desc}</div>
+      <div style={{display:'flex',gap:16,marginBottom:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:ts.text2}}><span>⏱</span><span>{recipe.prepTime} min</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:ts.text2}}><span>👥</span><span>{recipe.servings} porción{recipe.servings>1?'es':''}</span></div>
       </div>
-      {recipe.instructions&&<div style={{marginBottom:14}}><div style={{fontSize:9,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Preparación</div><div style={{fontSize:12,lineHeight:1.8,whiteSpace:'pre-line',color:ts.text}}>{recipe.instructions}</div></div>}
-      {T&&<PrimaryBtn onClick={()=>setModal({type:'planRecipe',recipe})} T={T} style={{width:'100%',justifyContent:'center'}}>+ Añadir al planificador</PrimaryBtn>}
+      {missing.length>0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:10,padding:'12px 14px',marginBottom:16,fontSize:13,color:'#92400E'}}>
+        <div style={{fontWeight:700,marginBottom:4}}>⚠ Faltantes en alacena:</div>
+        {missing.map(({f,needed,have,unit})=><div key={f.id} style={{marginTop:2}}>• {f.name}: necesitas {needed}{unit}, tienes {have}</div>)}
+      </div>}
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Nutrición por porción</div>
+        <NutrBar n={n} servings={recipe.servings}/>
+      </div>
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Ingredientes</div>
+        {recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const ok=(pantry.find(p=>p.foodId===foodId)?.amount||0)>=amount;return f?<div key={foodId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${ts.border}`}}>
+          <span style={{fontSize:14,color:ts.text}}>{f.name}</span>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:13,color:ts.text2}}>{amount} {unit}</span>
+            <span style={{fontSize:11,background:ok?'#DCFCE7':'#FEF3C7',color:ok?'#14532D':'#92400E',padding:'2px 8px',borderRadius:8,fontWeight:700}}>{ok?'✓':'⚠'}</span>
+          </div>
+        </div>:null;})}
+      </div>
+      {recipe.instructions&&<div style={{marginBottom:20}}>
+        <div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Preparación</div>
+        <div style={{fontSize:14,lineHeight:1.8,whiteSpace:'pre-line',color:ts.text}}>{recipe.instructions}</div>
+      </div>}
+      {T&&<PrimaryBtn onClick={()=>{close();setModal({type:'planRecipe',recipe});}} T={T} full>+ Añadir al planificador</PrimaryBtn>}
+      <div style={{height:8}}/>
     </div>
-  </>;
+  </Sheet>;
 }
 
-// ── PlannerTab ────────────────────────────────────────────────────────────────
-function PlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
+// ── Mobile Planner Tab ────────────────────────────────────────────────────────
+function MobilePlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
+  const today=new Date();const todayIdx=Math.max(0,dates.findIndex(d=>d.toDateString()===today.toDateString()));
+  const [dayIdx,setDayIdx]=useState(todayIdx>=0?todayIdx:0);
+  const date=dates[dayIdx];
+  const fmt=d=>d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
+
+  // Swipe gesture
+  const touchStart=useRef(null);
+  const onTouchStart=e=>touchStart.current=e.touches[0].clientX;
+  const onTouchEnd=e=>{
+    if(touchStart.current===null)return;
+    const dx=e.changedTouches[0].clientX-touchStart.current;
+    if(Math.abs(dx)>50){if(dx<0)setDayIdx(i=>Math.min(6,i+1));else setDayIdx(i=>Math.max(0,i-1));}
+    touchStart.current=null;
+  };
+
+  return <div style={{background:T.bg,minHeight:'100%',fontFamily:T.font}}>
+    {/* Week strip */}
+    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'12px 16px 10px',position:'sticky',top:52,zIndex:10}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <button onClick={()=>{setWeekOff(w=>w-1);setDayIdx(0);}} style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg>
+        </button>
+        <span style={{flex:1,textAlign:'center',fontSize:13,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':weekOff>0?`+${weekOff} semana`:weekOff+' semana'}</span>
+        <button onClick={()=>{setWeekOff(w=>w+1);setDayIdx(0);}} style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+        </button>
+        {weekOff!==0&&<button onClick={()=>{setWeekOff(0);setDayIdx(todayIdx>=0?todayIdx:0);}} style={{height:36,padding:'0 12px',borderRadius:10,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:12,fontWeight:700}}>Hoy</button>}
+      </div>
+      {/* Day pills */}
+      <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:2}}>
+        {dates.map((d,i)=>{const active=i===dayIdx;const tod=isToday(d);const key=`${dKey(d)}_`;const hasAny=MEALS.some(m=>(planner[key+m]||[]).length>0);
+          return<button key={i} onClick={()=>setDayIdx(i)} className="tap-highlight" style={{flexShrink:0,width:42,padding:'7px 0',borderRadius:12,border:`1.5px solid ${active?T.accent:tod?T.border2:T.border}`,background:active?T.accentDark:T.surface2,color:active?T.accentText:T.text,cursor:'pointer',textAlign:'center',position:'relative'}}>
+            <div style={{fontSize:9,color:active?T.accentText:T.text2,marginBottom:2}}>{DAYS_SHORT[i]}</div>
+            <div style={{fontSize:15,fontWeight:700}}>{d.getDate()}</div>
+            {hasAny&&<div style={{width:5,height:5,borderRadius:'50%',background:active?T.accentText:T.accent,margin:'2px auto 0'}}/>}
+          </button>;})}
+      </div>
+    </div>
+
+    {/* Day view with swipe */}
+    <div style={{padding:'0 0 8px'}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div style={{padding:'14px 16px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{fontSize:16,fontWeight:700,color:T.text,textTransform:'capitalize'}}>{fmt(date)}</div>
+        {isToday(date)&&<span style={{fontSize:11,fontWeight:700,background:T.accentDark,color:T.accentText,padding:'3px 10px',borderRadius:8}}>Hoy</span>}
+      </div>
+
+      {MEALS.map(meal=>{
+        const mc=T.meal[meal];const key=`${dKey(date)}_${meal}`;const slot=planner[key]||[];
+        return<div key={meal} style={{margin:'8px 16px',borderRadius:16,border:`1.5px solid ${T.border}`,overflow:'hidden',background:T.surface}}>
+          {/* Meal header */}
+          <div style={{padding:'12px 16px',background:mc.bg,borderBottom:`1px solid ${mc.bc}33`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:18}}>{MEAL_ICONS[meal]}</span>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:mc.tc}}>{meal}</div>
+                {slot.length>0&&<div style={{fontSize:11,color:mc.tc,opacity:.8}}>{slot.length} ítem{slot.length>1?'s':''}</div>}
+              </div>
+            </div>
+            <button onClick={()=>setModal({type:'addSlot',date,meal})} className="tap-highlight" style={{width:36,height:36,borderRadius:10,background:mc.bc+'33',border:`1px solid ${mc.bc}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:mc.tc}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          {/* Slot entries */}
+          {slot.length===0?<div style={{padding:'20px 16px',textAlign:'center',color:T.text3,fontSize:13}}>Toca + para añadir</div>:
+          <div style={{padding:'8px'}}>
+            {slot.map((entry,ri)=>{
+              const label=slotLabel(entry,recipes,foods);const clickable=entry.type==='recipe';
+              const entryN=entry.type==='food'?
+                (()=>{const f=foods.find(x=>x.id===entry.foodId);if(!f)return null;const r=entry.amount/f.serving;return{cal:r0(f.cal*r)}; })():
+                (()=>{const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return null;return{cal:r0(calcN(rec.ingredients,foods,entry.qty||1).cal)};})();
+              return<div key={ri} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:T.surface2,border:`1px solid ${T.border}`,marginBottom:6}}>
+                <div style={{flex:1,cursor:clickable?'pointer':'default'}} onClick={()=>{if(clickable){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}}>
+                  <div style={{fontSize:13,fontWeight:700,color:T.text}}>{label}</div>
+                  {entryN&&<div style={{fontSize:12,color:T.text2,marginTop:2}}>{entryN.cal} kcal</div>}
+                </div>
+                <button onClick={()=>rmFromSlot(key,ri)} style={{width:32,height:32,borderRadius:8,background:T.surface,border:`1px solid ${T.border2}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.text2,flexShrink:0}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>;})}
+          </div>}
+        </div>;})}
+      <div style={{padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,color:T.text3,fontSize:12}}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg> desliza para cambiar de día <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+      </div>
+    </div>
+  </div>;
+}
+
+// ── Desktop Planner Tab ───────────────────────────────────────────────────────
+function DesktopPlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
   const fmt=d=>d.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
-  return <div style={{padding:14,fontFamily:T.font}}>
-    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
-      <button onClick={()=>setWeekOff(w=>w-1)} style={{padding:'5px 11px',borderRadius:6,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:12,fontWeight:700}}>◀</button>
-      <span style={{flex:1,textAlign:'center',fontSize:13,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':`${fmt(dates[0])} — ${fmt(dates[6])}`}</span>
-      <button onClick={()=>setWeekOff(w=>w+1)} style={{padding:'5px 11px',borderRadius:6,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:12,fontWeight:700}}>▶</button>
-      {weekOff!==0&&<button onClick={()=>setWeekOff(0)} style={{padding:'5px 10px',borderRadius:6,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:12,fontWeight:700}}>Hoy</button>}
+  return <div style={{padding:16,fontFamily:T.font}}>
+    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
+      <button onClick={()=>setWeekOff(w=>w-1)} style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>◀</button>
+      <span style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':`${fmt(dates[0])} — ${fmt(dates[6])}`}</span>
+      <button onClick={()=>setWeekOff(w=>w+1)} style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>▶</button>
+      {weekOff!==0&&<button onClick={()=>setWeekOff(0)} style={{padding:'7px 12px',borderRadius:8,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:13,fontWeight:700}}>Hoy</button>}
     </div>
     <div style={{overflowX:'auto'}}>
-      <div style={{display:'grid',gridTemplateColumns:'50px repeat(7,minmax(95px,1fr))',gap:3,minWidth:700}}>
+      <div style={{display:'grid',gridTemplateColumns:'50px repeat(7,minmax(100px,1fr))',gap:4,minWidth:720}}>
         <div/>
-        {dates.map((d,i)=>{const today=isToday(d);return<div key={i} style={{padding:'6px 4px',textAlign:'center',borderRadius:6,background:today?T.accent:T.surface2,color:today?T.accentText:T.text}}><div style={{fontSize:9,opacity:.7}}>{DAYS[(d.getDay()+6)%7].slice(0,3).toUpperCase()}</div><div style={{fontSize:13,fontWeight:700}}>{d.getDate()}</div>{today&&<div style={{fontSize:8}}>hoy</div>}</div>;})}
+        {dates.map((d,i)=>{const today=isToday(d);return<div key={i} style={{padding:'7px 4px',textAlign:'center',borderRadius:8,background:today?T.accent:T.surface2,color:today?T.accentText:T.text}}>
+          <div style={{fontSize:10,opacity:.7}}>{DAYS_SHORT[i]}</div><div style={{fontSize:14,fontWeight:700}}>{d.getDate()}</div>{today&&<div style={{fontSize:9}}>hoy</div>}
+        </div>;})}
         {MEALS.map(meal=>{const mc=T.meal[meal];return<React.Fragment key={meal}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:5,fontSize:9,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:.3}}>{meal.slice(0,3)}</div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:6,fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:.3}}>{MEAL_ICONS[meal]}</div>
           {dates.map((d,di)=>{const key=`${dKey(d)}_${meal}`;const slot=planner[key]||[];
-            return<div key={di} style={{minHeight:75,background:T.surface,border:`1px solid ${isToday(d)?T.accent:T.border}`,borderRadius:7,padding:4,display:'flex',flexDirection:'column',gap:3}}>
-              {slot.map((entry,ri)=>{const label=slotLabel(entry,recipes,foods);const clickable=entry.type==='recipe';
-                return<div key={ri} style={{display:'flex',alignItems:'center',background:mc.bg,border:`1px solid ${mc.bc}`,borderRadius:4,padding:'2px 5px',gap:2}}>
-                  <span onClick={()=>{if(clickable){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}} style={{fontSize:9,fontWeight:700,color:mc.tc,flex:1,lineHeight:1.3,cursor:clickable?'pointer':'default'}}>{label}</span>
-                  <button onClick={()=>rmFromSlot(key,ri)} style={{background:'none',border:'none',cursor:'pointer',padding:1,color:mc.tc,opacity:.7,flexShrink:0,fontSize:10}}>✕</button>
+            return<div key={di} style={{minHeight:76,background:T.surface,border:`1px solid ${isToday(d)?T.accent:T.border}`,borderRadius:8,padding:5,display:'flex',flexDirection:'column',gap:3}}>
+              {slot.map((entry,ri)=>{const label=slotLabel(entry,recipes,foods);const cl=entry.type==='recipe';
+                return<div key={ri} style={{display:'flex',alignItems:'center',background:mc.bg,border:`1px solid ${mc.bc}`,borderRadius:5,padding:'3px 6px',gap:3}}>
+                  <span onClick={()=>{if(cl){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}} style={{fontSize:10,fontWeight:700,color:mc.tc,flex:1,lineHeight:1.3,cursor:cl?'pointer':'default'}}>{label}</span>
+                  <button onClick={()=>rmFromSlot(key,ri)} style={{background:'none',border:'none',cursor:'pointer',padding:1,color:mc.tc,opacity:.7,flexShrink:0,fontSize:10,lineHeight:1}}>✕</button>
                 </div>;})}
-              <button onClick={()=>setModal({type:'addSlot',date:d,meal})} style={{marginTop:'auto',display:'flex',alignItems:'center',justifyContent:'center',padding:'3px',border:`1px dashed ${T.border2}`,borderRadius:4,background:'none',cursor:'pointer',color:T.text3,fontSize:11}}>+</button>
+              <button onClick={()=>setModal({type:'addSlot',date:d,meal})} style={{marginTop:'auto',display:'flex',alignItems:'center',justifyContent:'center',padding:'3px',border:`1px dashed ${T.border2}`,borderRadius:5,background:'none',cursor:'pointer',color:T.text3,fontSize:11}}>+</button>
             </div>;})}
         </React.Fragment>;})}
       </div>
@@ -354,40 +504,46 @@ function PlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recip
   </div>;
 }
 
-// ── RecipesTab ────────────────────────────────────────────────────────────────
-function RecipesTab({recipes,setRecipes,foods,pantry,setModal}){
+// ── Recipes Tab ───────────────────────────────────────────────────────────────
+function RecipesTab({recipes,setRecipes,foods,pantry,setModal,isMobile}){
   const [q,setQ]=useState('');const [mf,setMf]=useState('');
   const MC={Desayuno:{bg:'#FFFBEB',bc:'#F59E0B',tc:'#78350F'},Almuerzo:{bg:'#F0FDF4',bc:'#22C55E',tc:'#14532D'},Cena:{bg:'#EFF6FF',bc:'#3B82F6',tc:'#1E3A8A'}};
   const list=recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase())&&(!mf||r.mealType===mf));
   const del=id=>{if(window.confirm('¿Eliminar receta?'))setRecipes(r=>r.filter(x=>x.id!==id));};
   const getMiss=rec=>rec.ingredients.filter(({foodId,amount})=>(pantry.find(p=>p.foodId===foodId)?.amount||0)<amount).length;
-  return <div style={{padding:16}}>
-    <div style={{display:'flex',gap:7,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
-      <input style={{flex:1,minWidth:140,padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,outline:'none',fontFamily:'inherit'}} placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)}/>
-      <S value={mf} onChange={e=>setMf(e.target.value)} style={{width:110}}><option value="">Todos</option>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</S>
-      <button onClick={()=>setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])})} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Nueva receta</button>
+  return <div style={{padding:isMobile?'14px 14px':'16px'}}>
+    <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+      <div style={{flex:1,minWidth:150,position:'relative'}}>
+        <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#999'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input style={{width:'100%',padding:'11px 12px 11px 38px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}} placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)}/>
+      </div>
+      <select value={mf} onChange={e=>setMf(e.target.value)} style={{padding:'11px 12px',fontSize:14,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}}>
+        <option value="">Todos</option>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}
+      </select>
+      {!isMobile&&<button onClick={()=>setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])})} style={{padding:'11px 16px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Nueva receta</button>}
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:10}}>
+    <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(auto-fill,minmax(240px,1fr))',gap:10}}>
       {list.map(rec=>{const n=calcN(rec.ingredients,foods);const mc=MC[rec.mealType]||MC.Almuerzo;const miss=getMiss(rec);
-        return<div key={rec.id} style={{background:'#fff',borderRadius:10,border:'1px solid #e0e0e0',padding:14,display:'flex',flexDirection:'column',gap:8}}>
-          <div><span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:5}}>{rec.mealType}</span><div style={{fontSize:14,fontWeight:700}}>{rec.name}</div><div style={{fontSize:11,color:'#666',marginTop:2}}>{rec.desc}</div></div>
-          <div style={{display:'flex',gap:5,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:10,color:'#666'}}>⏱ {rec.prepTime}min · {rec.servings} ración{rec.servings>1?'es':''}</span>{miss>0&&<span style={{fontSize:9,background:'#FEF3C7',color:'#92400E',padding:'2px 5px',borderRadius:9,border:'1px solid #F59E0B'}}>⚠ {miss} faltante{miss>1?'s':''}</span>}</div>
+        return<div key={rec.id} style={{background:'#fff',borderRadius:14,border:'1.5px solid #e0e0e0',padding:16,display:'flex',flexDirection:'column',gap:10}}>
+          <div><span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:6}}>{MEAL_ICONS[rec.mealType]} {rec.mealType}</span><div style={{fontSize:16,fontWeight:700}}>{rec.name}</div><div style={{fontSize:13,color:'#666',marginTop:3}}>{rec.desc}</div></div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:12,color:'#666'}}>⏱ {rec.prepTime}min · {rec.servings} ración{rec.servings>1?'es':''}</span>{miss>0&&<span style={{fontSize:11,background:'#FEF3C7',color:'#92400E',padding:'2px 8px',borderRadius:9,border:'1px solid #F59E0B',fontWeight:700}}>⚠ {miss} faltante{miss>1?'s':''}</span>}</div>
           <NutrBar n={n} servings={rec.servings} compact/>
-          <div style={{display:'flex',gap:5}}>
-            <button onClick={()=>setModal({type:'detail',recipe:rec})} style={{padding:'4px 9px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:11,fontWeight:600}}>Ver</button>
-            <button onClick={()=>setModal({type:'planRecipe',recipe:rec})} style={{padding:'4px 9px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:11,fontWeight:700}}>+ Plan</button>
+          <div style={{display:'flex',gap:8}}>
+            <SmBtn onClick={()=>setModal({type:'detail',recipe:rec})}>Ver detalle</SmBtn>
+            <SmBtn v="primary" onClick={()=>setModal({type:'planRecipe',recipe:rec})}>+ Plan</SmBtn>
             <div style={{flex:1}}/>
-            <button onClick={()=>setModal({type:'recipeForm',recipe:rec,onSave:r=>setRecipes(rs=>rs.map(x=>x.id===r.id?r:x))})} style={{padding:'4px 9px',borderRadius:6,border:'1px solid #ccc',background:'transparent',color:'#666',cursor:'pointer',fontSize:11}}>✏</button>
-            <button onClick={()=>del(rec.id)} style={{padding:'4px 9px',borderRadius:6,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button>
+            <SmBtn onClick={()=>setModal({type:'recipeForm',recipe:rec,onSave:r=>setRecipes(rs=>rs.map(x=>x.id===r.id?r:x))})}>✏</SmBtn>
+            <SmBtn v="danger" onClick={()=>del(rec.id)}>✕</SmBtn>
           </div>
         </div>;})}
-      {list.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:'40px 0',color:'#666'}}><div style={{fontSize:32,marginBottom:8}}>🍽</div><div style={{fontSize:13}}>No hay recetas aún.</div></div>}
+      {list.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:'50px 0',color:'#999'}}><div style={{fontSize:36,marginBottom:12}}>🍽</div><div style={{fontSize:15}}>No hay recetas aún.</div></div>}
     </div>
+    {isMobile&&<div style={{height:80}}/>}
   </div>;
 }
 
-// ── FoodsTab ──────────────────────────────────────────────────────────────────
-function FoodsTab({foods,setFoods}){
+// ── Foods Tab ─────────────────────────────────────────────────────────────────
+function FoodsTab({foods,setFoods,isMobile}){
   const [q,setQ]=useState('');const [ef,setEf]=useState(null);const [form,setForm]=useState({});
   const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
   const openNew=()=>{setEf({});setForm({name:'',cal:'',prot:'',carbs:'',fat:'',fiber:'',serving:'100',unit:'g'});};
@@ -395,93 +551,116 @@ function FoodsTab({foods,setFoods}){
   const save=()=>{const f={id:ef.id||uid(),name:form.name,cal:+form.cal||0,prot:+form.prot||0,carbs:+form.carbs||0,fat:+form.fat||0,fiber:+form.fiber||0,serving:+form.serving||100,unit:form.unit||'g'};if(!f.name)return;if(ef.id)setFoods(fs=>fs.map(x=>x.id===f.id?f:x));else setFoods(fs=>[...fs,f]);setEf(null);};
   const del=id=>{if(window.confirm('¿Eliminar?'))setFoods(fs=>fs.filter(f=>f.id!==id));};
   const filtered=foods.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
-  return <div style={{padding:16}}>
-    <div style={{display:'flex',gap:7,marginBottom:12,alignItems:'center'}}>
-      <input style={{flex:1,padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,outline:'none',fontFamily:'inherit'}} placeholder="Buscar alimentos..." value={q} onChange={e=>setQ(e.target.value)}/>
-      <button onClick={openNew} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Nuevo</button>
+  const p=isMobile?'14px 14px':'16px';
+  return <div style={{padding:p}}>
+    <div style={{display:'flex',gap:8,marginBottom:14,alignItems:'center'}}>
+      <div style={{flex:1,position:'relative'}}>
+        <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#999'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input style={{width:'100%',padding:'11px 12px 11px 38px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}} placeholder="Buscar alimentos..." value={q} onChange={e=>setQ(e.target.value)}/>
+      </div>
+      <button onClick={openNew} style={{padding:'11px 14px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700,whiteSpace:'nowrap'}}>+ Nuevo</button>
     </div>
-    {ef!==null&&<div style={{background:'#fff',borderRadius:10,border:'1px solid #ccc',padding:16,marginBottom:14}}>
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>{ef.id?'Editar':'Nuevo'} alimento</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-        <LF t="Nombre"><I value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Ej: Leche"/></LF>
-        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:8}}><LF t="Porción base"><I type="number" value={form.serving} onChange={e=>fp('serving',e.target.value)}/></LF><LF t="Unidad"><I value={form.unit} onChange={e=>fp('unit',e.target.value)}/></LF></div>
+    {ef!==null&&<div style={{background:'#fff',borderRadius:14,border:'1.5px solid #ddd',padding:16,marginBottom:16}}>
+      <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>{ef.id?'Editar':'Nuevo'} alimento</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+        <LF t="Nombre"><input value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Ej: Leche" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:8}}><LF t="Porción base"><input type="number" inputMode="decimal" value={form.serving} onChange={e=>fp('serving',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF><LF t="Unidad"><input value={form.unit} onChange={e=>fp('unit',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF></div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:12}}>
-        {[['cal','Kcal'],['prot','Prot (g)'],['carbs','Carbs (g)'],['fat','Grasa (g)'],['fiber','Fibra (g)']].map(([k,l])=><LF key={k} t={l}><I type="number" value={form[k]} onChange={e=>fp(k,e.target.value)} placeholder="0"/></LF>)}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:14}}>
+        {[['cal','Kcal'],['prot','Prot'],['carbs','Carbs'],['fat','Grasa'],['fiber','Fibra']].map(([k,l])=><LF key={k} t={l}><input type="number" inputMode="decimal" value={form[k]} onChange={e=>fp(k,e.target.value)} placeholder="0" style={{width:'100%',padding:'10px 6px',fontSize:14,border:'1.5px solid #ddd',borderRadius:8,outline:'none',fontFamily:'inherit',textAlign:'center'}}/></LF>)}
       </div>
-      <div style={{display:'flex',gap:7}}><button onClick={save} style={{padding:'7px 14px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{padding:'7px 12px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:12}}>Cancelar</button></div>
+      <div style={{display:'flex',gap:8}}><button onClick={save} style={{flex:1,padding:'12px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{flex:1,padding:'12px',borderRadius:10,border:'1.5px solid #ddd',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:14}}>Cancelar</button></div>
     </div>}
-    <div style={{background:'#fff',borderRadius:10,border:'1px solid #e0e0e0',overflow:'auto'}}>
+    {isMobile?<div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {filtered.map(f=><div key={f.id} style={{background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:700}}>{f.name}</div>
+          <div style={{fontSize:12,color:'#666',marginTop:3}}>{f.serving}{f.unit} · {f.cal} kcal · <span style={{color:'#14532D'}}>{f.prot}g prot</span></div>
+        </div>
+        <div style={{display:'flex',gap:6}}><SmBtn onClick={()=>openEdit(f)}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(f.id)}>✕</SmBtn></div>
+      </div>)}
+    </div>:<div style={{background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',overflow:'auto'}}>
       <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
-        <thead><tr style={{background:'#f5f5f0'}}>{['Alimento','Porción','Kcal','Prot','Carbs','Grasa','Fibra',''].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'left',fontSize:9,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',borderBottom:'1px solid #e0e0e0'}}>{h}</th>)}</tr></thead>
+        <thead><tr style={{background:'#f5f5f0'}}>{['Alimento','Porción','Kcal','Prot','Carbs','Grasa','Fibra',''].map(h=><th key={h} style={{padding:'9px 10px',textAlign:'left',fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',borderBottom:'1px solid #e0e0e0'}}>{h}</th>)}</tr></thead>
         <tbody>{filtered.map(f=><tr key={f.id} style={{borderBottom:'1px solid #f0f0f0'}}>
-          <td style={{padding:'7px 10px',fontWeight:600,fontSize:12}}>{f.name}</td><td style={{padding:'7px 10px',fontSize:11,color:'#666'}}>{f.serving}{f.unit}</td><td style={{padding:'7px 10px',fontSize:11}}>{f.cal}</td>
-          <td style={{padding:'7px 10px',fontSize:11,color:'#14532D'}}>{f.prot}g</td><td style={{padding:'7px 10px',fontSize:11,color:'#1E3A8A'}}>{f.carbs}g</td><td style={{padding:'7px 10px',fontSize:11,color:'#581C87'}}>{f.fat}g</td><td style={{padding:'7px 10px',fontSize:11,color:'#7C2D12'}}>{f.fiber}g</td>
-          <td style={{padding:'7px 10px'}}><div style={{display:'flex',gap:4}}><button onClick={()=>openEdit(f)} style={{padding:'3px 7px',borderRadius:5,border:'1px solid #ccc',background:'transparent',color:'#666',cursor:'pointer',fontSize:11}}>✏</button><button onClick={()=>del(f.id)} style={{padding:'3px 7px',borderRadius:5,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button></div></td>
+          <td style={{padding:'8px 10px',fontWeight:600,fontSize:13}}>{f.name}</td><td style={{padding:'8px 10px',fontSize:12,color:'#666'}}>{f.serving}{f.unit}</td><td style={{padding:'8px 10px',fontSize:12}}>{f.cal}</td>
+          <td style={{padding:'8px 10px',fontSize:12,color:'#14532D'}}>{f.prot}g</td><td style={{padding:'8px 10px',fontSize:12,color:'#1E3A8A'}}>{f.carbs}g</td><td style={{padding:'8px 10px',fontSize:12,color:'#581C87'}}>{f.fat}g</td><td style={{padding:'8px 10px',fontSize:12,color:'#7C2D12'}}>{f.fiber}g</td>
+          <td style={{padding:'8px 10px'}}><div style={{display:'flex',gap:5}}><SmBtn onClick={()=>openEdit(f)}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(f.id)}>✕</SmBtn></div></td>
         </tr>)}</tbody>
       </table>
-      {filtered.length===0&&<div style={{textAlign:'center',padding:24,color:'#666',fontSize:12}}>No hay alimentos.</div>}
-    </div>
+    </div>}
+    {isMobile&&<div style={{height:80}}/>}
   </div>;
 }
 
-// ── PantryTab ─────────────────────────────────────────────────────────────────
-function PantryTab({pantry,setPantry,foods}){
+// ── Pantry Tab ────────────────────────────────────────────────────────────────
+function PantryTab({pantry,setPantry,foods,isMobile}){
   const [ef,setEf]=useState(null);const [form,setForm]=useState({foodId:'',amount:''});
   const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
   const save=()=>{if(!form.foodId||!form.amount)return;const item={foodId:form.foodId,amount:+form.amount};if(ef&&ef.foodId)setPantry(p=>p.map(x=>x.foodId===ef.foodId?item:x));else{const ex=pantry.find(p=>p.foodId===form.foodId);if(ex)setPantry(p=>p.map(x=>x.foodId===form.foodId?{...x,amount:x.amount+(+form.amount)}:x));else setPantry(p=>[...p,item]);}setEf(null);};
   const avail=foods.filter(f=>!pantry.find(p=>p.foodId===f.id));
-  return <div style={{padding:16}}>
+  const p=isMobile?'14px':'16px';
+  return <div style={{padding:p}}>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-      <div style={{fontSize:14,fontWeight:700}}>Alacena ({pantry.length} ingrediente{pantry.length!==1?'s':''})</div>
-      <button onClick={()=>{setEf({});setForm({foodId:'',amount:''}); }} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Añadir</button>
+      <div><div style={{fontSize:16,fontWeight:700}}>Alacena</div><div style={{fontSize:13,color:'#666',marginTop:2}}>{pantry.length} ingrediente{pantry.length!==1?'s':''}</div></div>
+      {!isMobile&&<button onClick={()=>{setEf({});setForm({foodId:'',amount:''});}} style={{padding:'10px 14px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Añadir</button>}
     </div>
-    {ef!==null&&<div style={{background:'#fff',borderRadius:10,border:'1px solid #ccc',padding:14,marginBottom:12}}>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-        <LF t="Alimento"><S value={form.foodId} onChange={e=>fp('foodId',e.target.value)}><option value="">Seleccionar...</option>{(ef.foodId?foods:avail).map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</S></LF>
-        <LF t={`Cantidad${form.foodId?' ('+foods.find(f=>f.id===form.foodId)?.unit+')':''}`}><I type="number" value={form.amount} onChange={e=>fp('amount',e.target.value)} placeholder="0"/></LF>
+    {ef!==null&&<div style={{background:'#fff',borderRadius:14,border:'1.5px solid #ddd',padding:16,marginBottom:14}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
+        <LF t="Alimento"><select value={form.foodId} onChange={e=>fp('foodId',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit'}}><option value="">Seleccionar...</option>{(ef.foodId?foods:avail).map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></LF>
+        <LF t={`Cantidad${form.foodId?' ('+foods.find(f=>f.id===form.foodId)?.unit+')':''}`}><input type="number" inputMode="decimal" value={form.amount} onChange={e=>fp('amount',e.target.value)} placeholder="0" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
       </div>
-      <div style={{display:'flex',gap:7}}><button onClick={save} style={{padding:'7px 14px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{padding:'7px 12px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:12}}>Cancelar</button></div>
+      <div style={{display:'flex',gap:8}}><button onClick={save} style={{flex:1,padding:'12px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{flex:1,padding:'12px',borderRadius:10,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14}}>Cancelar</button></div>
     </div>}
-    {pantry.length===0&&ef===null&&<div style={{textAlign:'center',padding:'40px 0',color:'#666',background:'#fff',borderRadius:10,border:'1px solid #e0e0e0'}}><div style={{fontSize:32,marginBottom:8}}>🏠</div><div style={{fontSize:13}}>Tu alacena está vacía.</div></div>}
-    <div style={{display:'flex',flexDirection:'column',gap:5}}>
-      {pantry.map(item=>{const f=foods.find(x=>x.id===item.foodId);if(!f)return null;return<div key={item.foodId} style={{display:'flex',alignItems:'center',background:'#fff',borderRadius:8,border:'1px solid #e0e0e0',padding:'10px 14px',gap:10}}>
-        <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{f.name}</div><div style={{fontSize:11,color:'#666'}}>{item.amount} {f.unit}</div></div>
-        <button onClick={()=>{setEf(item);setForm({foodId:item.foodId,amount:item.amount});}} style={{padding:'3px 8px',borderRadius:5,border:'1px solid #ccc',background:'transparent',color:'#666',cursor:'pointer',fontSize:11}}>✏</button>
-        <button onClick={()=>setPantry(p=>p.filter(x=>x.foodId!==item.foodId))} style={{padding:'3px 8px',borderRadius:5,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button>
+    {pantry.length===0&&ef===null&&<div style={{textAlign:'center',padding:'50px 20px',color:'#999',background:'#fff',borderRadius:14,border:'1px solid #e0e0e0'}}><div style={{fontSize:40,marginBottom:12}}>🏠</div><div style={{fontSize:15,marginBottom:16}}>Tu alacena está vacía.</div>{isMobile&&<button onClick={()=>{setEf({});setForm({foodId:'',amount:''});}} style={{padding:'12px 24px',borderRadius:12,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>+ Añadir ingrediente</button>}</div>}
+    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {pantry.map(item=>{const f=foods.find(x=>x.id===item.foodId);if(!f)return null;return<div key={item.foodId} style={{display:'flex',alignItems:'center',background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',padding:'14px 16px',gap:12}}>
+        <div style={{flex:1}}><div style={{fontSize:15,fontWeight:600}}>{f.name}</div><div style={{fontSize:13,color:'#666',marginTop:2}}>{item.amount} {f.unit}</div></div>
+        <SmBtn onClick={()=>{setEf(item);setForm({foodId:item.foodId,amount:item.amount});}}>✏</SmBtn>
+        <SmBtn v="danger" onClick={()=>setPantry(p=>p.filter(x=>x.foodId!==item.foodId))}>✕</SmBtn>
       </div>;})}
     </div>
+    {isMobile&&<div style={{height:80}}/>}
   </div>;
 }
 
-// ── ShopTab ───────────────────────────────────────────────────────────────────
-function ShopTab({shopList,shopChk,setShopChk,setPantry}){
+// ── Shop Tab ──────────────────────────────────────────────────────────────────
+function ShopTab({shopList,shopChk,setShopChk,setPantry,isMobile}){
   const addToPantry=item=>{setPantry(p=>{const ex=p.find(x=>x.foodId===item.foodId);if(ex)return p.map(x=>x.foodId===item.foodId?{...x,amount:+(x.amount+item.missing).toFixed(1)}:x);return[...p,{foodId:item.foodId,amount:item.missing}];});setShopChk(c=>({...c,[item.foodId]:true}));};
   const undoItem=item=>{setPantry(p=>{const ex=p.find(x=>x.foodId===item.foodId);if(!ex)return p;const n=+(ex.amount-item.missing).toFixed(1);if(n<=0)return p.filter(x=>x.foodId!==item.foodId);return p.map(x=>x.foodId===item.foodId?{...x,amount:n}:x);});setShopChk(c=>({...c,[item.foodId]:false}));};
   const pending=shopList.filter(i=>!shopChk[i.foodId]);const done=shopList.filter(i=>shopChk[i.foodId]);
-  if(shopList.length===0)return<div style={{textAlign:'center',padding:'60px 20px',color:'#666'}}><div style={{fontSize:40,marginBottom:12}}>✅</div><div style={{fontSize:16,fontWeight:700}}>¡Todo listo!</div><div style={{fontSize:13,marginTop:6}}>No faltan ingredientes.</div></div>;
-  return <div style={{padding:16}}>
-    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
-      <div><div style={{fontSize:14,fontWeight:700}}>{pending.length} ítem{pending.length!==1?'s':''} pendiente{pending.length!==1?'s':''}</div><div style={{fontSize:11,color:'#666',marginTop:2}}>Jeff 🌑 + Lia 🌸 · al marcar se añade a la alacena</div></div>
-      {pending.length>0&&<button onClick={()=>pending.forEach(i=>addToPantry(i))} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>Marcar todo</button>}
+  const p=isMobile?'14px':'16px';
+  if(shopList.length===0)return<div style={{textAlign:'center',padding:'60px 20px',color:'#666'}}><div style={{fontSize:44,marginBottom:14}}>✅</div><div style={{fontSize:18,fontWeight:700}}>¡Todo listo!</div><div style={{fontSize:14,marginTop:6,color:'#888'}}>No faltan ingredientes para lo planificado.</div></div>;
+  return <div style={{padding:p}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
+      <div><div style={{fontSize:16,fontWeight:700}}>{pending.length} ítem{pending.length!==1?'s':''} pendiente{pending.length!==1?'s':''}</div><div style={{fontSize:13,color:'#666',marginTop:3}}>Jeff 🌑 + Lia 🌸 · toca para marcar comprado</div></div>
+      {pending.length>0&&<button onClick={()=>pending.forEach(i=>addToPantry(i))} style={{padding:'10px 16px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Marcar todo</button>}
     </div>
-    <div style={{display:'flex',flexDirection:'column',gap:5}}>
-      {pending.map(item=><div key={item.foodId} style={{display:'flex',alignItems:'center',gap:10,background:'#fff',borderRadius:8,border:'1px solid #e0e0e0',padding:'10px 14px'}}>
-        <button onClick={()=>addToPantry(item)} title="Marcar comprado" style={{width:20,height:20,borderRadius:5,border:'1px solid #ccc',background:'none',cursor:'pointer',flexShrink:0}}/>
-        <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{item.food.name}</div><div style={{fontSize:10,color:'#888'}}>{item.forPersons&&item.forPersons.length>0&&<span style={{marginRight:6}}>{item.forPersons.map(p=>THEMES[p].emoji).join(' ')}</span>}Tienes {item.have} {item.food.unit}</div></div>
-        <span style={{fontSize:12,fontWeight:700,color:'#DC2626',flexShrink:0}}>+{item.missing} {item.food.unit}</span>
-      </div>)}
-      {done.length>0&&<><div style={{fontSize:9,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginTop:10,marginBottom:4}}>Comprados y en alacena</div>
-        {done.map(item=><div key={item.foodId} style={{display:'flex',alignItems:'center',gap:10,background:'#f5f5f0',borderRadius:8,border:'1px solid #e0e0e0',padding:'10px 14px',opacity:.55}}>
-          <button onClick={()=>undoItem(item)} style={{width:20,height:20,borderRadius:5,background:'#1a3d0b',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg></button>
-          <div style={{fontSize:13,textDecoration:'line-through',flex:1}}>{item.food.name} — {item.missing} {item.food.unit}</div>
-        </div>)}</>}
+    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {pending.map(item=><button key={item.foodId} onClick={()=>addToPantry(item)} className="tap-highlight" style={{display:'flex',alignItems:'center',gap:14,background:'#fff',borderRadius:14,border:'1.5px solid #e0e0e0',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+        <div style={{width:26,height:26,borderRadius:8,border:'2px solid #ccc',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#fafafa'}}/>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:600,color:'#1a1a1a'}}>{item.food.name}</div>
+          <div style={{fontSize:12,color:'#888',marginTop:2}}>{item.forPersons&&item.forPersons.length>0&&<span style={{marginRight:6}}>{item.forPersons.map(p=>TH[p].emoji).join(' ')}</span>}Tienes {item.have} {item.food.unit}</div>
+        </div>
+        <span style={{fontSize:14,fontWeight:700,color:'#DC2626',flexShrink:0}}>+{item.missing} {item.food.unit}</span>
+      </button>)}
+      {done.length>0&&<>
+        <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',marginTop:8,marginBottom:4,padding:'0 4px'}}>Comprados · añadidos a la alacena</div>
+        {done.map(item=><div key={item.foodId} style={{display:'flex',alignItems:'center',gap:14,background:'#f5f5f0',borderRadius:14,border:'1px solid #e0e0e0',padding:'12px 16px',opacity:.6}}>
+          <button onClick={()=>undoItem(item)} style={{width:26,height:26,borderRadius:8,background:'#1a3d0b',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+          </button>
+          <div style={{fontSize:14,textDecoration:'line-through',flex:1,color:'#666'}}>{item.food.name} — {item.missing} {item.food.unit}</div>
+        </div>)}
+      </>}
     </div>
+    {isMobile&&<div style={{height:80}}/>}
   </div>;
 }
 
-// ── RecipeFormModal ───────────────────────────────────────────────────────────
-function RecipeFormModal({recipe,foods,onSave,close}){
+// ── Recipe Form Sheet ─────────────────────────────────────────────────────────
+function RecipeFormSheet({recipe,foods,onSave,close}){
   const [form,setForm]=useState(recipe?{...recipe}:{id:uid(),name:'',servings:1,prepTime:15,mealType:'Almuerzo',desc:'',ingredients:[],instructions:''});
   const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
   const addIngr=()=>setForm(f=>({...f,ingredients:[...f.ingredients,{foodId:'',amount:'',unit:'g'}]}));
@@ -489,33 +668,48 @@ function RecipeFormModal({recipe,foods,onSave,close}){
   const rmIngr=i=>setForm(f=>({...f,ingredients:f.ingredients.filter((_,j)=>j!==i)}));
   const save=()=>{if(!form.name)return;const ingrs=form.ingredients.filter(i=>i.foodId&&i.amount).map(i=>({...i,amount:+i.amount}));onSave({...form,servings:+form.servings,prepTime:+form.prepTime,ingredients:ingrs});close();};
   const preview=calcN(form.ingredients.filter(i=>i.foodId&&i.amount).map(i=>({...i,amount:+i.amount})),foods);
-  return <>
-    <div style={{padding:'14px 18px 12px',borderBottom:'1px solid #e0e0e0',display:'flex',alignItems:'center',gap:8}}><div style={{fontSize:14,fontWeight:700,flex:1}}>{recipe?'Editar':'Nueva'} receta</div><CloseBtn onClick={close}/></div>
-    <div style={{padding:'14px 18px'}}>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:2}}><LF t="Nombre"><I value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Nombre"/></LF><LF t="Tipo"><S value={form.mealType} onChange={e=>fp('mealType',e.target.value)}>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</S></LF></div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:2}}><LF t="Porciones"><I type="number" value={form.servings} onChange={e=>fp('servings',e.target.value)} min="1"/></LF><LF t="Tiempo (min)"><I type="number" value={form.prepTime} onChange={e=>fp('prepTime',e.target.value)} min="0"/></LF></div>
-      <LF t="Descripción"><I value={form.desc} onChange={e=>fp('desc',e.target.value)} placeholder="Descripción breve"/></LF>
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>Ingredientes<button onClick={addIngr} style={{padding:'3px 8px',borderRadius:5,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:11,fontWeight:700}}>+ Añadir</button></div>
-        {form.ingredients.map((ingr,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 70px 70px 28px',gap:6,marginBottom:6,alignItems:'center'}}>
-          <S value={ingr.foodId} onChange={e=>setIngr(i,'foodId',e.target.value)}><option value="">Alimento...</option>{foods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</S>
-          <I type="number" value={ingr.amount} onChange={e=>setIngr(i,'amount',e.target.value)} placeholder="Cant."/>
-          <I value={ingr.unit} onChange={e=>setIngr(i,'unit',e.target.value)} placeholder="Unidad"/>
-          <button onClick={()=>rmIngr(i)} style={{padding:'4px',borderRadius:5,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button>
-        </div>)}
-        {form.ingredients.length===0&&<div style={{fontSize:12,color:'#666',textAlign:'center',padding:10,background:'#f5f5f0',borderRadius:6}}>Sin ingredientes.</div>}
+  return <Sheet open onClose={close} title={recipe?'Editar receta':'Nueva receta'} maxH="95vh">
+    <div style={{padding:'4px 20px 16px'}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:4}}>
+        <LF t="Nombre"><input value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Nombre" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+        <LF t="Tipo"><select value={form.mealType} onChange={e=>fp('mealType',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit'}}>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</select></LF>
       </div>
-      {form.ingredients.some(i=>i.foodId&&i.amount)&&<div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición por porción</div><NutrBar n={preview} servings={+form.servings||1} compact/></div>}
-      <LF t="Instrucciones"><textarea value={form.instructions} onChange={e=>fp('instructions',e.target.value)} placeholder="Pasos de preparación..." style={{width:'100%',padding:'8px 10px',fontSize:12,border:'1px solid #ccc',borderRadius:6,background:'#fff',color:'#1a1a1a',outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:80}}/></LF>
-      <div style={{display:'flex',gap:7,marginTop:4}}><button onClick={save} style={{padding:'8px 16px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Guardar receta</button><button onClick={close} style={{padding:'8px 12px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:12}}>Cancelar</button></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:4}}>
+        <LF t="Porciones"><input type="number" inputMode="numeric" value={form.servings} onChange={e=>fp('servings',e.target.value)} min="1" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+        <LF t="Tiempo (min)"><input type="number" inputMode="numeric" value={form.prepTime} onChange={e=>fp('prepTime',e.target.value)} min="0" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+      </div>
+      <LF t="Descripción"><input value={form.desc} onChange={e=>fp('desc',e.target.value)} placeholder="Descripción breve" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+      <div style={{marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          Ingredientes
+          <button onClick={addIngr} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Añadir</button>
+        </div>
+        {form.ingredients.map((ingr,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 80px 80px 40px',gap:8,marginBottom:10,alignItems:'center'}}>
+          <select value={ingr.foodId} onChange={e=>setIngr(i,'foodId',e.target.value)} style={{padding:'11px 10px',fontSize:14,border:'1.5px solid #ddd',borderRadius:9,background:'#fff',outline:'none',fontFamily:'inherit'}}><option value="">Alimento...</option>{foods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
+          <input type="number" inputMode="decimal" value={ingr.amount} onChange={e=>setIngr(i,'amount',e.target.value)} placeholder="Cant." style={{padding:'11px 8px',fontSize:14,border:'1.5px solid #ddd',borderRadius:9,outline:'none',fontFamily:'inherit',textAlign:'center'}}/>
+          <input value={ingr.unit} onChange={e=>setIngr(i,'unit',e.target.value)} placeholder="Unidad" style={{padding:'11px 8px',fontSize:14,border:'1.5px solid #ddd',borderRadius:9,outline:'none',fontFamily:'inherit'}}/>
+          <button onClick={()=>rmIngr(i)} style={{height:44,borderRadius:9,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+        </div>)}
+        {form.ingredients.length===0&&<div style={{fontSize:13,color:'#888',textAlign:'center',padding:'14px',background:'#f5f5f0',borderRadius:10}}>Sin ingredientes aún.</div>}
+      </div>
+      {form.ingredients.some(i=>i.foodId&&i.amount)&&<div style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Nutrición por porción (vista previa)</div>
+        <NutrBar n={preview} servings={+form.servings||1} compact/>
+      </div>}
+      <LF t="Instrucciones"><textarea value={form.instructions} onChange={e=>fp('instructions',e.target.value)} placeholder="Pasos de preparación..." style={{width:'100%',padding:'12px',fontSize:14,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:90,lineHeight:1.6}}/></LF>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:4}}>
+        <button onClick={close} style={{padding:'14px',borderRadius:12,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14,fontWeight:600}}>Cancelar</button>
+        <button onClick={save} style={{padding:'14px',borderRadius:12,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar receta</button>
+      </div>
     </div>
-  </>;
+  </Sheet>;
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App(){
+  const isMobile=useIsMobile();
   const [appReady,setAppReady]=useState(!IS_CONFIGURED);
-  const [syncStatus,setSyncStatus]=useState('idle'); // idle | saving | saved | error
+  const [syncStatus,setSyncStatus]=useState('idle');
   const [tab,setTab]=useState('planner');
   const [person,setPerson]=useState('jeff');
   const [weekOff,setWeekOff]=useState(0);
@@ -525,136 +719,106 @@ function App(){
   const [planners,setPlanners]=useState({jeff:{},lia:{}});
   const [modal,setModal]=useState(null);
   const [shopChk,setShopChk]=useState({});
-  const T=THEMES[person];
+  const T=TH[person];
   const dates=useMemo(()=>weekDates(weekOff),[weekOff]);
   const saveTimer=useRef(null);
-  const isFirstLoad=useRef(true);
+  const isFirst=useRef(true);
 
-  // Load from Supabase on mount
   useEffect(()=>{
-    if(!IS_CONFIGURED)return;
-    setSyncStatus('saving');
-    dbLoad().then(data=>{
-      if(data){
-        if(data.foods)setFoods(data.foods);
-        if(data.recipes)setRecipes(data.recipes);
-        if(data.pantry)setPantry(data.pantry);
-        if(data.planners)setPlanners(data.planners);
-        if(data.shopChk)setShopChk(data.shopChk);
-      }
-      setAppReady(true);
-      setSyncStatus('saved');
-      setTimeout(()=>setSyncStatus('idle'),2000);
-    }).catch(()=>{setAppReady(true);setSyncStatus('error');});
+    if(!IS_CONFIGURED)return;setSyncStatus('saving');
+    dbLoad().then(data=>{if(data){if(data.foods)setFoods(data.foods);if(data.recipes)setRecipes(data.recipes);if(data.pantry)setPantry(data.pantry);if(data.planners)setPlanners(data.planners);if(data.shopChk)setShopChk(data.shopChk);}setAppReady(true);setSyncStatus('saved');setTimeout(()=>setSyncStatus('idle'),2000);}).catch(()=>{setAppReady(true);setSyncStatus('error');});
   },[]);
 
-  // Auto-save when state changes (debounced 1.2s)
   useEffect(()=>{
-    if(!IS_CONFIGURED||!appReady)return;
-    if(isFirstLoad.current){isFirstLoad.current=false;return;}
-    if(saveTimer.current)clearTimeout(saveTimer.current);
-    setSyncStatus('saving');
-    saveTimer.current=setTimeout(async()=>{
-      try{
-        await Promise.all([
-          dbSave('foods',foods),dbSave('recipes',recipes),
-          dbSave('pantry',pantry),dbSave('planners',planners),
-          dbSave('shopChk',shopChk),
-        ]);
-        setSyncStatus('saved');
-        setTimeout(()=>setSyncStatus('idle'),2500);
-      }catch{setSyncStatus('error');}
-    },1200);
+    if(!IS_CONFIGURED||!appReady)return;if(isFirst.current){isFirst.current=false;return;}
+    if(saveTimer.current)clearTimeout(saveTimer.current);setSyncStatus('saving');
+    saveTimer.current=setTimeout(async()=>{try{await Promise.all([dbSave('foods',foods),dbSave('recipes',recipes),dbSave('pantry',pantry),dbSave('planners',planners),dbSave('shopChk',shopChk)]);setSyncStatus('saved');setTimeout(()=>setSyncStatus('idle'),2500);}catch{setSyncStatus('error');}},1200);
   },[foods,recipes,pantry,planners,shopChk]);
 
-  // Poll for remote changes every 45s (for multi-device sync)
-  useEffect(()=>{
-    if(!IS_CONFIGURED)return;
-    const interval=setInterval(async()=>{
-      const data=await dbLoad();
-      if(!data)return;
-      if(data.planners)setPlanners(data.planners);
-      if(data.pantry)setPantry(data.pantry);
-      if(data.shopChk)setShopChk(data.shopChk);
-    },45000);
-    return()=>clearInterval(interval);
-  },[]);
+  useEffect(()=>{if(!IS_CONFIGURED)return;const iv=setInterval(async()=>{const d=await dbLoad();if(!d)return;if(d.planners)setPlanners(d.planners);if(d.pantry)setPantry(d.pantry);if(d.shopChk)setShopChk(d.shopChk);},45000);return()=>clearInterval(iv);},[]);
 
   const addToSlot=(key,entry)=>setPlanners(p=>({...p,[person]:{...p[person],[key]:[...(p[person][key]||[]),entry]}}));
   const rmFromSlot=(key,i)=>setPlanners(p=>{const a=[...(p[person][key]||[])];a.splice(i,1);return{...p,[person]:{...p[person],[key]:a}};});
 
   const shopList=useMemo(()=>{
     const needed={};const forPerson={};
-    ['jeff','lia'].forEach(pid=>{
-      Object.values(planners[pid]||{}).forEach(entries=>(entries||[]).forEach(entry=>{
-        if(entry.type==='food'){
-          const f=foods.find(x=>x.id===entry.foodId);if(!f)return;
-          needed[entry.foodId]=(needed[entry.foodId]||0)+entry.amount;
-          if(!forPerson[entry.foodId])forPerson[entry.foodId]=new Set();forPerson[entry.foodId].add(pid);
-        }else{
-          const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return;
-          rec.ingredients.forEach(({foodId,amount})=>{
-            needed[foodId]=(needed[foodId]||0)+(amount/rec.servings)*(entry.qty||1);
-            if(!forPerson[foodId])forPerson[foodId]=new Set();forPerson[foodId].add(pid);
-          });
-        }
-      }));
-    });
+    ['jeff','lia'].forEach(pid=>{Object.values(planners[pid]||{}).forEach(entries=>(entries||[]).forEach(entry=>{
+      if(entry.type==='food'){needed[entry.foodId]=(needed[entry.foodId]||0)+entry.amount;if(!forPerson[entry.foodId])forPerson[entry.foodId]=new Set();forPerson[entry.foodId].add(pid);}
+      else{const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return;rec.ingredients.forEach(({foodId,amount})=>{needed[foodId]=(needed[foodId]||0)+(amount/rec.servings)*(entry.qty||1);if(!forPerson[foodId])forPerson[foodId]=new Set();forPerson[foodId].add(pid);});}
+    }));});
     return Object.entries(needed).map(([fId,amt])=>{const f=foods.find(x=>x.id===fId);if(!f)return null;const have=pantry.find(p=>p.foodId===fId)?.amount||0;const missing=r1(Math.max(0,amt-have));if(missing<=0)return null;return{foodId:fId,food:f,needed:r1(amt),have,missing,forPersons:[...(forPerson[fId]||[])]};}).filter(Boolean);
   },[planners,pantry,recipes,foods]);
 
-  const TABS=[{id:'planner',icon:'📅',label:'Planificador'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Alimentos'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length}];
+  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Alimentos'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length}];
 
-  if(!appReady)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f5f0',flexDirection:'column',gap:16}}>
-    <div style={{width:36,height:36,border:'3px solid #e0e0e0',borderTop:'3px solid #1a3d0b',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>
-    <div style={{fontSize:13,color:'#666'}}>Cargando datos…</div>
+  if(!appReady)return<div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,background:'#f5f5f0'}}>
+    <div style={{width:40,height:40,border:'3px solid #e0e0e0',borderTop:'3px solid #1a3d0b',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
+    <div style={{fontSize:14,color:'#666'}}>Cargando datos…</div>
   </div>;
 
-  const syncDot={idle:null,saving:<span style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4,flexShrink:0}}><span style={{width:6,height:6,borderRadius:'50%',border:'1.5px solid #ccc',borderTop:'1.5px solid #666',display:'inline-block',animation:'spin .7s linear infinite'}}/>Guardando</span>,saved:<span style={{fontSize:10,color:'#22c55e',display:'flex',alignItems:'center',gap:4,flexShrink:0}}>✓ Guardado</span>,error:<span style={{fontSize:10,color:'#ef4444',flexShrink:0}}>⚠ Error al guardar</span>}[syncStatus];
+  const syncIndicator={idle:null,saving:<span style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#888'}}><span style={{width:6,height:6,borderRadius:'50%',background:'#f59e0b',display:'inline-block',animation:'pulse 1s infinite'}}/>Guardando</span>,saved:<span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>✓ Guardado</span>,error:<span style={{fontSize:11,color:'#ef4444'}}>⚠ Error</span>}[syncStatus];
 
-  return <div style={{minHeight:'100vh',background:tab==='planner'?T.bg:'#f5f5f0',transition:'background .3s',fontFamily:"'Space Grotesk',sans-serif",fontSize:13}}>
-    <div style={{maxWidth:1100,margin:'0 auto'}}>
-      <div style={{background:'#fff',borderBottom:'1px solid #e0e0e0',position:'sticky',top:0,zIndex:40,padding:'0 16px'}}>
-        <div style={{display:'flex',alignItems:'center',overflowX:'auto'}}>
-          <div style={{fontSize:15,fontWeight:800,color:'#1a3d0b',padding:'12px 14px 12px 0',flexShrink:0}}>🥗 Meal Planner</div>
-          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:'flex',alignItems:'center',gap:5,padding:'14px 10px',border:'none',borderBottom:tab===t.id?'2px solid #1a3d0b':'2px solid transparent',background:'none',cursor:'pointer',fontSize:12,fontWeight:600,color:tab===t.id?'#1a3d0b':'#666',whiteSpace:'nowrap'}}>
-            {t.icon} {t.label}{t.badge>0&&<span style={{background:'#DC2626',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px'}}>{t.badge}</span>}
-          </button>)}
-          <div style={{marginLeft:'auto',padding:'0 4px',flexShrink:0}}>{syncDot}</div>
-        </div>
+  const plannerBg=tab==='planner'?T.bg:'#f5f5f0';
+
+  return <div style={{background:plannerBg,transition:'background .3s',fontFamily:"'Space Grotesk',sans-serif",minHeight:'100vh'}}>
+    {/* ── Top header ── */}
+    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:50,height:52,background:'#fff',borderBottom:'1px solid #e0e0e0',display:'flex',alignItems:'center',paddingLeft:'calc(16px + var(--safe-l))',paddingRight:'calc(16px + var(--safe-r))'}}>
+      <div style={{fontSize:16,fontWeight:800,color:'#1a3d0b',flex:1}}>🥗 Meal Planner</div>
+      {/* Desktop tabs */}
+      <div className="top-nav desktop-only" style={{gap:0,alignItems:'center',height:'100%'}}>
+        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:'flex',alignItems:'center',gap:5,padding:'0 12px',height:'100%',border:'none',borderBottom:tab===t.id?'2.5px solid #1a3d0b':'2.5px solid transparent',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'#1a3d0b':'#666',whiteSpace:'nowrap',position:'relative'}}>
+          {t.icon} {t.label}{t.badge>0&&<span style={{background:'#DC2626',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px'}}>{t.badge}</span>}
+        </button>)}
       </div>
-
-      {tab==='planner'&&<div style={{background:T.bg,minHeight:'calc(100vh - 50px)',transition:'background .3s'}}>
-        <div style={{padding:'10px 16px',borderBottom:`1px solid ${T.border}`,display:'flex',gap:8,alignItems:'center',background:T.surface,fontFamily:T.font}}>
-          <span style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px'}}>Planificador de</span>
-          {['jeff','lia'].map(pid=>{const th=THEMES[pid];const active=person===pid;return<button key={pid} onClick={()=>setPerson(pid)} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 14px',borderRadius:20,border:`1.5px solid ${active?th.accent:T.border2}`,background:active?th.accentDark:'transparent',color:active?th.accentText:T.text2,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:th.font,transition:'all .15s'}}>
-            {th.emoji} {th.name}
-          </button>;})}
-        </div>
-        <PlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
-      </div>}
-      {tab==='recipes'&&<RecipesTab recipes={recipes} setRecipes={setRecipes} foods={foods} pantry={pantry} setModal={setModal}/>}
-      {tab==='foods'&&<FoodsTab foods={foods} setFoods={setFoods}/>}
-      {tab==='pantry'&&<PantryTab pantry={pantry} setPantry={setPantry} foods={foods}/>}
-      {tab==='shop'&&<ShopTab shopList={shopList} shopChk={shopChk} setShopChk={setShopChk} setPantry={setPantry}/>}
+      {syncIndicator&&<div style={{marginLeft:12}}>{syncIndicator}</div>}
     </div>
 
-    {modal&&<div onClick={()=>setModal(null)} style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'48px 14px 16px',overflowY:'auto'}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:tab==='planner'?T.surface:'#fff',borderRadius:14,border:`1px solid ${tab==='planner'?T.border:'#e0e0e0'}`,boxShadow:'0 24px 64px rgba(0,0,0,.22)',width:'100%',maxWidth:500,maxHeight:'86vh',overflowY:'auto',fontFamily:tab==='planner'?T.font:"'Space Grotesk',sans-serif"}}>
-        {modal.type==='detail'&&<DetailModal recipe={modal.recipe} foods={foods} pantry={pantry} T={tab==='planner'?T:null} close={()=>setModal(null)} setModal={setModal}/>}
-        {modal.type==='addSlot'&&<AddSlotModal date={modal.date} meal={modal.meal} recipes={recipes} foods={foods} pantry={pantry} addToSlot={addToSlot} T={T} close={()=>setModal(null)}/>}
-        {modal.type==='planRecipe'&&<PlanRecipeModal recipe={modal.recipe} dates={dates} addToSlot={addToSlot} foods={foods} T={T} close={()=>setModal(null)}/>}
-        {modal.type==='recipeForm'&&<RecipeFormModal recipe={modal.recipe} foods={foods} onSave={modal.onSave} close={()=>setModal(null)}/>}
+    {/* ── Main content ── */}
+    <div className="main-scroll" style={{maxWidth:1100,margin:'0 auto'}}>
+      {/* Person switcher — planner tab only */}
+      {tab==='planner'&&<div style={{position:'sticky',top:52,zIndex:20,background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',gap:8,alignItems:'center',fontFamily:T.font}}>
+        <span style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',flexShrink:0}}>Ver plan de</span>
+        <div style={{display:'flex',gap:8,flex:1}}>
+          {['jeff','lia'].map(pid=>{const th=TH[pid];const active=person===pid;return<button key={pid} onClick={()=>setPerson(pid)} className="tap-highlight" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'9px',borderRadius:14,border:`1.5px solid ${active?th.accent:T.border2}`,background:active?th.accentDark:'transparent',color:active?th.accentText:T.text2,cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:th.font,transition:'all .15s'}}>
+            <span style={{fontSize:18}}>{th.emoji}</span> {th.name}
+          </button>;})}
+        </div>
+      </div>}
+
+      {/* Tab content */}
+      <div style={{background:tab==='planner'?T.bg:'#f5f5f0',minHeight:'calc(100vh - 52px)'}}>
+        {tab==='planner'&&(isMobile
+          ?<MobilePlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
+          :<DesktopPlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
+        )}
+        {tab==='recipes'&&<RecipesTab recipes={recipes} setRecipes={setRecipes} foods={foods} pantry={pantry} setModal={setModal} isMobile={isMobile}/>}
+        {tab==='foods'&&<FoodsTab foods={foods} setFoods={setFoods} isMobile={isMobile}/>}
+        {tab==='pantry'&&<PantryTab pantry={pantry} setPantry={setPantry} foods={foods} isMobile={isMobile}/>}
+        {tab==='shop'&&<ShopTab shopList={shopList} shopChk={shopChk} setShopChk={setShopChk} setPantry={setPantry} isMobile={isMobile}/>}
       </div>
-    </div>}
+    </div>
+
+    {/* ── Mobile bottom nav ── */}
+    <div className="bottom-nav mobile-only" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,background:'#fff',borderTop:'1px solid #e0e0e0',display:'grid',gridTemplateColumns:'repeat(5,1fr)',paddingTop:8}}>
+      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 2px 0',border:'none',background:'none',cursor:'pointer',position:'relative'}}>
+        <div style={{fontSize:20,lineHeight:1}}>{t.icon}{t.badge>0&&<span style={{position:'absolute',top:-2,right:'50%',marginRight:-20,background:'#DC2626',color:'#fff',fontSize:8,fontWeight:700,borderRadius:8,padding:'1px 4px',minWidth:14,textAlign:'center'}}>{t.badge}</span>}</div>
+        <div style={{fontSize:10,fontWeight:tab===t.id?700:500,color:tab===t.id?'#1a3d0b':'#888'}}>{t.label}</div>
+        {tab===t.id&&<div style={{position:'absolute',top:-1,left:'50%',transform:'translateX(-50%)',width:24,height:3,borderRadius:2,background:'#1a3d0b'}}/>}
+      </button>)}
+    </div>
+
+    {/* ── Mobile FAB ── */}
+    {isMobile&&(tab==='recipes'||tab==='pantry'||tab==='foods')&&<button onClick={()=>{if(tab==='recipes')setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])});else if(tab==='pantry')document.dispatchEvent(new CustomEvent('pantry-add'));else if(tab==='foods')document.dispatchEvent(new CustomEvent('food-add'));}} className="tap-highlight" style={{position:'fixed',bottom:'calc(var(--nav-h) + var(--safe-bot) + 16px)',right:20,zIndex:40,width:56,height:56,borderRadius:'50%',background:'#1a3d0b',color:'#fff',border:'none',cursor:'pointer',fontSize:28,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 16px rgba(26,61,11,.35)'}}>+</button>}
+
+    {/* ── Modals / Sheets ── */}
+    {modal?.type==='addSlot'&&<AddSlotSheet date={modal.date} meal={modal.meal} recipes={recipes} foods={foods} pantry={pantry} addToSlot={addToSlot} T={T} close={()=>setModal(null)}/>}
+    {modal?.type==='planRecipe'&&<PlanRecipeSheet recipe={modal.recipe} dates={dates} addToSlot={addToSlot} foods={foods} T={T} close={()=>setModal(null)}/>}
+    {modal?.type==='detail'&&<DetailSheet recipe={modal.recipe} foods={foods} pantry={pantry} T={tab==='planner'?T:null} close={()=>setModal(null)} setModal={setModal}/>}
+    {modal?.type==='recipeForm'&&<RecipeFormSheet recipe={modal.recipe} foods={foods} onSave={modal.onSave} close={()=>setModal(null)}/>}
   </div>;
 }
 
-// Entry point — show setup screen if not configured
-function Root(){
-  return IS_CONFIGURED ? <App/> : <SetupScreen/>;
-}
-ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
