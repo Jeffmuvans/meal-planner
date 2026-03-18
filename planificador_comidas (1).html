@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planificador de Comidas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Space Grotesk',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:13px;}
+input,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ══════════════════════════════════════════════
+//  CONFIGURACIÓN — reemplaza con tus credenciales
+// ══════════════════════════════════════════════
+const SUPABASE_URL  = 'https://dehigkcuqoqigeikiijr.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGlna2N1cW9xaWdlaWtpaWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDMzNDAsImV4cCI6MjA4OTQxOTM0MH0.qGxELDvYORIsKN-SBkhti_gauVivkXFvfiTWYXgzCTI';
+// ══════════════════════════════════════════════
+
+const IS_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
+const db = IS_CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+async function dbLoad() {
+  if (!db) return null;
+  try {
+    const { data, error } = await db.from('app_state').select('key,value');
+    if (error) throw error;
+    return Object.fromEntries((data||[]).map(r => [r.key, r.value]));
+  } catch(e) { console.error('Load error:', e); return null; }
+}
+async function dbSave(key, value) {
+  if (!db) return;
+  try {
+    await db.from('app_state').upsert({ key, value, updated_at: new Date().toISOString() });
+  } catch(e) { console.error('Save error:', e); }
+}
+</script>
+<script type="text/babel">
+const {useState,useMemo,useEffect,useRef,useCallback}=React;
+const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const MEALS=['Desayuno','Almuerzo','Cena'];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const r0=n=>Math.round(n);
+const r1=n=>+(Math.round(n*10)/10).toFixed(1);
+const dKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const isToday=d=>d.toDateString()===new Date().toDateString();
+function weekDates(off=0){const now=new Date();const dow=now.getDay();const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1)+off*7);mon.setHours(0,0,0,0);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});}
+function calcN(ingrs,foods,qty=1){return ingrs.reduce((a,{foodId,amount})=>{const f=foods.find(x=>x.id===foodId);if(!f||!amount)return a;const r=(amount/f.serving)*qty;return{cal:a.cal+f.cal*r,prot:a.prot+f.prot*r,carbs:a.carbs+f.carbs*r,fat:a.fat+f.fat*r,fiber:a.fiber+f.fiber*r};},{cal:0,prot:0,carbs:0,fat:0,fiber:0});}
+function recipeWeight(recipe){return recipe.ingredients.reduce((s,{amount,unit})=>s+(['g','ml'].includes(unit)?amount:0),0);}
+
+const THEMES={
+  jeff:{id:'jeff',name:'Jeff',emoji:'🌑',font:"'Space Grotesk',sans-serif",bg:'#0d1117',surface:'#161b22',surface2:'#21262d',accent:'#58a6ff',accentDark:'#1f6feb',accentText:'#ffffff',text:'#e6edf3',text2:'#8b949e',text3:'#484f58',border:'#30363d',border2:'#484f58',primaryBg:'#238636',primaryColor:'#ffffff',meal:{Desayuno:{bg:'#2d1f07',bc:'#d97706',tc:'#fcd34d'},Almuerzo:{bg:'#0d2818',bc:'#16a34a',tc:'#86efac'},Cena:{bg:'#0d1f4a',bc:'#3b82f6',tc:'#93c5fd'}}},
+  lia:{id:'lia',name:'Lia',emoji:'🌸',font:"'Nunito',sans-serif",bg:'#fff5f9',surface:'#ffffff',surface2:'#fce7f3',accent:'#e91e8c',accentDark:'#c2185b',accentText:'#ffffff',text:'#2d1028',text2:'#9d4e7a',text3:'#d4a0c0',border:'#f9c8df',border2:'#f48fbf',primaryBg:'#e91e8c',primaryColor:'#ffffff',meal:{Desayuno:{bg:'#fff0f9',bc:'#f472b6',tc:'#9d174d'},Almuerzo:{bg:'#faf0ff',bc:'#c084fc',tc:'#6b21a8'},Cena:{bg:'#fff1f2',bc:'#fb7185',tc:'#9f1239'}}},
+};
+
+const FOODS0=[
+  {id:'f1',name:'Avena',cal:389,prot:17,carbs:66,fat:7,fiber:11,serving:100,unit:'g'},
+  {id:'f2',name:'Huevo',cal:78,prot:6,carbs:0.6,fat:5,fiber:0,serving:1,unit:'unidad'},
+  {id:'f3',name:'Leche entera',cal:61,prot:3.2,carbs:4.8,fat:3.3,fiber:0,serving:100,unit:'ml'},
+  {id:'f4',name:'Pechuga de pollo',cal:165,prot:31,carbs:0,fat:3.6,fiber:0,serving:100,unit:'g'},
+  {id:'f5',name:'Arroz blanco',cal:130,prot:2.7,carbs:28,fat:0.3,fiber:0.4,serving:100,unit:'g'},
+  {id:'f6',name:'Brócoli',cal:34,prot:2.8,carbs:7,fat:0.4,fiber:2.6,serving:100,unit:'g'},
+  {id:'f7',name:'Plátano',cal:89,prot:1.1,carbs:23,fat:0.3,fiber:2.6,serving:1,unit:'unidad'},
+  {id:'f8',name:'Pan integral',cal:69,prot:3.6,carbs:11.5,fat:1.2,fiber:2,serving:1,unit:'rebanada'},
+  {id:'f9',name:'Aguacate',cal:234,prot:2.9,carbs:12,fat:21,fiber:10,serving:1,unit:'unidad'},
+  {id:'f10',name:'Tomate',cal:18,prot:0.9,carbs:3.9,fat:0.2,fiber:1.2,serving:100,unit:'g'},
+  {id:'f11',name:'Cebolla',cal:40,prot:1.1,carbs:9.3,fat:0.1,fiber:1.7,serving:100,unit:'g'},
+  {id:'f12',name:'Aceite de oliva',cal:884,prot:0,carbs:0,fat:100,fiber:0,serving:15,unit:'ml'},
+  {id:'f13',name:'Lentejas',cal:116,prot:9,carbs:20,fat:0.4,fiber:7.9,serving:100,unit:'g'},
+  {id:'f14',name:'Yogur natural',cal:61,prot:3.5,carbs:4.7,fat:3.3,fiber:0,serving:100,unit:'g'},
+];
+const RECIPES0=[
+  {id:'r1',name:'Avena con plátano',servings:1,prepTime:10,mealType:'Desayuno',desc:'Reconfortante y energético',ingredients:[{foodId:'f1',amount:80,unit:'g'},{foodId:'f7',amount:1,unit:'unidad'},{foodId:'f3',amount:200,unit:'ml'}],instructions:'1. Calentar la leche a fuego medio.\n2. Añadir la avena y cocinar 5 min.\n3. Servir con plátano en rodajas.'},
+  {id:'r2',name:'Pollo con arroz y brócoli',servings:2,prepTime:30,mealType:'Almuerzo',desc:'Balanceado y alto en proteína',ingredients:[{foodId:'f4',amount:300,unit:'g'},{foodId:'f5',amount:200,unit:'g'},{foodId:'f6',amount:150,unit:'g'},{foodId:'f12',amount:15,unit:'ml'}],instructions:'1. Sazonar el pollo y asar 15 min.\n2. Hervir el arroz 20 min.\n3. Brócoli al vapor 8 min.'},
+  {id:'r3',name:'Tostada con aguacate y huevo',servings:1,prepTime:15,mealType:'Desayuno',desc:'Rico en grasas saludables',ingredients:[{foodId:'f8',amount:2,unit:'rebanada'},{foodId:'f9',amount:1,unit:'unidad'},{foodId:'f2',amount:2,unit:'unidad'}],instructions:'1. Tostar el pan.\n2. Machacar aguacate.\n3. Freír huevos.\n4. Montar y servir.'},
+  {id:'r4',name:'Sopa de lentejas',servings:3,prepTime:40,mealType:'Cena',desc:'Nutritiva y reconfortante',ingredients:[{foodId:'f13',amount:300,unit:'g'},{foodId:'f10',amount:200,unit:'g'},{foodId:'f11',amount:100,unit:'g'},{foodId:'f12',amount:20,unit:'ml'}],instructions:'1. Sofreír cebolla 5 min.\n2. Tomate 5 min.\n3. Lentejas + 1L agua.\n4. Cocinar 35 min.'},
+  {id:'r5',name:'Yogur con avena',servings:1,prepTime:5,mealType:'Desayuno',desc:'Rápido y proteico',ingredients:[{foodId:'f14',amount:150,unit:'g'},{foodId:'f1',amount:40,unit:'g'},{foodId:'f7',amount:1,unit:'unidad'}],instructions:'1. Mezclar yogur con avena.\n2. Reposar 5 min.\n3. Decorar con plátano.'},
+];
+
+// ── Setup Screen ─────────────────────────────────────────────────────────────
+function SetupScreen(){
+  const [step,setStep]=useState(1);
+  const sql=`create table if not exists app_state (
+  key text primary key,
+  value jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table app_state enable row level security;
+create policy "public_rw" on app_state
+  for all using (true) with check (true);`;
+  const copy=t=>navigator.clipboard.writeText(t).catch(()=>{});
+  const steps=[
+    {title:'Crear proyecto Supabase',content:<div>
+      <p style={{fontSize:13,lineHeight:1.7,marginBottom:12}}>Ve a <a href="https://supabase.com" target="_blank" style={{color:'#3b82f6'}}>supabase.com</a>, crea una cuenta gratuita y luego un nuevo proyecto. Elige la región más cercana (ej. <em>South America</em>).</p>
+      <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:8,padding:12,fontSize:12,color:'#0c4a6e'}}>💡 El plan gratuito incluye 500MB de base de datos y es más que suficiente para esta app.</div>
+    </div>},
+    {title:'Crear la tabla',content:<div>
+      <p style={{fontSize:13,lineHeight:1.7,marginBottom:10}}>En tu proyecto de Supabase, ve a <strong>SQL Editor</strong> y ejecuta este código:</p>
+      <div style={{position:'relative'}}>
+        <pre style={{background:'#0d1117',color:'#e6edf3',borderRadius:8,padding:'12px 14px',fontSize:11,lineHeight:1.6,overflow:'auto',fontFamily:'monospace'}}>{sql}</pre>
+        <button onClick={()=>copy(sql)} style={{position:'absolute',top:8,right:8,padding:'4px 8px',borderRadius:5,border:'1px solid #30363d',background:'#21262d',color:'#8b949e',cursor:'pointer',fontSize:10,fontWeight:600}}>Copiar</button>
+      </div>
+    </div>},
+    {title:'Obtener credenciales',content:<div>
+      <p style={{fontSize:13,lineHeight:1.7,marginBottom:10}}>Ve a <strong>Settings → API</strong> en tu proyecto y copia:</p>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {[['Project URL','https://xxxxxxxxxxxx.supabase.co'],['anon public key','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...(muy largo)']].map(([k,v])=><div key={k} style={{background:'#f5f5f0',borderRadius:7,padding:'9px 12px',border:'1px solid #e0e0e0'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:3}}>{k}</div>
+          <div style={{fontSize:11,color:'#888',fontFamily:'monospace'}}>{v}</div>
+        </div>)}
+      </div>
+    </div>},
+    {title:'Configurar el archivo HTML',content:<div>
+      <p style={{fontSize:13,lineHeight:1.7,marginBottom:10}}>Abre el archivo <code style={{background:'#f5f5f0',padding:'1px 5px',borderRadius:4,fontSize:12}}>planificador_comidas.html</code> con un editor de texto (Notepad, TextEdit, VS Code) y reemplaza las líneas al inicio:</p>
+      <pre style={{background:'#0d1117',color:'#e6edf3',borderRadius:8,padding:'12px 14px',fontSize:11,lineHeight:1.8,fontFamily:'monospace'}}>{`const SUPABASE_URL = 'https://tu-proyecto.supabase.co';\nconst SUPABASE_KEY = 'tu-anon-key-aqui';`}</pre>
+      <p style={{fontSize:12,color:'#666',marginTop:10}}>Luego guarda el archivo y súbelo a GitHub Pages o Netlify. ¡Listo!</p>
+    </div>},
+  ];
+  return <div style={{minHeight:'100vh',background:'#f5f5f0',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+    <div style={{background:'#fff',borderRadius:16,border:'1px solid #e0e0e0',boxShadow:'0 8px 32px rgba(0,0,0,.08)',maxWidth:520,width:'100%',overflow:'hidden',animation:'fadein .4s ease'}}>
+      <div style={{background:'linear-gradient(135deg,#1a3d0b,#2d6e1e)',padding:'24px 28px',color:'#fff'}}>
+        <div style={{fontSize:28,marginBottom:8}}>🥗</div>
+        <div style={{fontSize:20,fontWeight:800}}>Meal Planner</div>
+        <div style={{fontSize:13,opacity:.8,marginTop:4}}>Configura la base de datos para usar la app en cualquier dispositivo</div>
+      </div>
+      <div style={{padding:28}}>
+        <div style={{display:'flex',gap:4,marginBottom:24}}>
+          {steps.map((_,i)=><div key={i} style={{flex:1,height:4,borderRadius:2,background:i<step?'#1a3d0b':i===step-1?'#1a3d0b':'#e0e0e0',opacity:i<step?1:i===step-1?1:.4}}/>)}
+        </div>
+        <div style={{fontSize:11,fontWeight:700,color:'#1a3d0b',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:6}}>Paso {step} de {steps.length}</div>
+        <div style={{fontSize:17,fontWeight:700,marginBottom:16}}>{steps[step-1].title}</div>
+        {steps[step-1].content}
+        <div style={{display:'flex',gap:8,marginTop:24}}>
+          {step>1&&<button onClick={()=>setStep(s=>s-1)} style={{flex:1,padding:'10px',borderRadius:8,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:13,fontWeight:600}}>← Anterior</button>}
+          {step<steps.length?<button onClick={()=>setStep(s=>s+1)} style={{flex:2,padding:'10px',borderRadius:8,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Siguiente →</button>
+          :<div style={{flex:2,background:'#f0fdf4',border:'1px solid #86efac',borderRadius:8,padding:'10px',textAlign:'center',fontSize:13,color:'#14532D',fontWeight:600}}>✓ ¡Sigue las instrucciones del paso 4!</div>}
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+// ── Shared UI ────────────────────────────────────────────────────────────────
+function NutrBar({n,servings=1,compact}){
+  const items=[{l:'Kcal',v:r0(n.cal/servings),c:'#92400E',bg:'#FEF3C7'},{l:'Prot',v:r1(n.prot/servings)+'g',c:'#14532D',bg:'#DCFCE7'},{l:'Carbs',v:r1(n.carbs/servings)+'g',c:'#1E3A8A',bg:'#EFF6FF'},{l:'Grasa',v:r1(n.fat/servings)+'g',c:'#581C87',bg:'#F5F3FF'},{l:'Fibra',v:r1(n.fiber/servings)+'g',c:'#7C2D12',bg:'#FFF7ED'}];
+  return <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>{items.map(it=><div key={it.l} style={{textAlign:'center',padding:compact?'4px 2px':'7px 2px',borderRadius:6,background:it.bg}}><div style={{fontSize:compact?11:13,fontWeight:700,color:it.c}}>{it.v}</div><div style={{fontSize:9,color:it.c,opacity:.7}}>{it.l}</div></div>)}</div>;
+}
+function CloseBtn({onClick,T}){return <button onClick={onClick} style={{background:'none',border:'none',cursor:'pointer',padding:4,color:T?T.text2:'#666',display:'flex',alignItems:'center'}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>;}
+function PrimaryBtn({children,onClick,T,disabled,style={}}){return <button onClick={onClick} disabled={disabled} style={{padding:'8px 14px',borderRadius:7,border:'none',background:T?T.primaryBg:'#1a3d0b',color:T?T.primaryColor:'#fff',cursor:disabled?'not-allowed':'pointer',fontSize:12,fontWeight:700,opacity:disabled?.5:1,...style}}>{children}</button>;}
+function GhostBtn({children,onClick,T,style={}}){return <button onClick={onClick} style={{padding:'8px 14px',borderRadius:7,border:`1px solid ${T?T.border2:'#ccc'}`,background:T?T.surface2:'#f5f5f0',color:T?T.text:'#1a1a1a',cursor:'pointer',fontSize:12,fontWeight:600,...style}}>{children}</button>;}
+function TBtn({children,onClick,active,T}){return <button onClick={onClick} style={{flex:1,padding:'8px 6px',borderRadius:6,border:`1px solid ${active?T.accent:T.border}`,background:active?T.accentDark:T.surface2,color:active?T.accentText:T.text2,cursor:'pointer',fontSize:12,fontWeight:700}}>{children}</button>;}
+function LF({t,children}){return <div style={{marginBottom:10}}><div style={{fontSize:10,fontWeight:700,color:'#666',marginBottom:4,textTransform:'uppercase',letterSpacing:'.4px'}}>{t}</div>{children}</div>;}
+function I({style={},...p}){return <input {...p} style={{width:'100%',padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,background:'#fff',color:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}/>;}
+function S({children,...p}){return <select {...p} style={{width:'100%',padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,background:'#fff',color:'#1a1a1a',outline:'none',fontFamily:'inherit'}}>{children}</select>;}
+
+function slotLabel(entry,recipes,foods){
+  if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);return f?`${f.name} (${entry.amount}${entry.unit})`:'?';}
+  const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return '?';
+  return entry.qty&&entry.qty!==1?`${rec.name} ×${r1(entry.qty)}`:rec.name;
+}
+
+// ── QtyPicker ─────────────────────────────────────────────────────────────────
+function QtyPicker({recipe,foods,T,onConfirm,onBack}){
+  const [mode,setMode]=useState('porciones');
+  const [qty,setQty]=useState(1);
+  const [exactAmt,setExactAmt]=useState('');
+  const [exactUnit,setExactUnit]=useState('g');
+  const rw=recipeWeight(recipe);
+  const clamp=v=>Math.max(0.5,Math.round(v*2)/2);
+  const effQty=mode==='porciones'?qty:(rw>0&&+exactAmt>0?(+exactAmt/rw)*recipe.servings:1);
+  const baseN=calcN(recipe.ingredients,foods,1);
+  const confirm=()=>{if(mode==='porciones')onConfirm(qty);else if(rw>0&&+exactAmt>0)onConfirm(r1((+exactAmt/rw)*recipe.servings));else onConfirm(1);};
+  return <div style={{padding:'14px 20px',background:T.surface}}>
+    <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:2}}>{recipe.name}</div>
+    <div style={{fontSize:11,color:T.text2,marginBottom:14}}>Define la cantidad a registrar</div>
+    <div style={{display:'flex',gap:6,marginBottom:16}}><TBtn active={mode==='porciones'} T={T} onClick={()=>setMode('porciones')}>Por porciones</TBtn><TBtn active={mode==='exacto'} T={T} onClick={()=>setMode('exacto')}>Cantidad en g/ml</TBtn></div>
+    {mode==='porciones'?<div style={{marginBottom:14}}>
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Porciones — base: {recipe.servings}</div>
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        <button onClick={()=>setQty(q=>clamp(q-.5))} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+        <div style={{flex:1,textAlign:'center'}}><span style={{fontSize:30,fontWeight:800,color:T.accent}}>{qty}</span><span style={{fontSize:13,color:T.text2,marginLeft:6}}>porción{qty!==1?'es':''}</span></div>
+        <button onClick={()=>setQty(q=>q+.5)} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+      </div>
+    </div>:<div style={{marginBottom:14}}>
+      {rw===0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:6,padding:'7px 10px',marginBottom:10,fontSize:11,color:'#92400E'}}>⚠ Sin ingredientes en g/ml. Usa porciones.</div>}
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8}}>Peso total receta: {rw>0?rw+' g/ml':'no disponible'}</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:8,marginBottom:8}}>
+        <input type="number" min="0" value={exactAmt} onChange={e=>setExactAmt(e.target.value)} placeholder={rw>0?`Ej: ${r0(rw/recipe.servings)}`:'cantidad'} style={{padding:'10px',fontSize:16,fontWeight:700,border:`1px solid ${T.border2}`,borderRadius:7,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
+        <select value={exactUnit} onChange={e=>setExactUnit(e.target.value)} style={{padding:'10px',fontSize:13,border:`1px solid ${T.border2}`,borderRadius:7,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}><option value="g">g</option><option value="ml">ml</option></select>
+      </div>
+      {+exactAmt>0&&rw>0&&<div style={{fontSize:11,color:T.text2}}>≈ {r1((+exactAmt/rw)*recipe.servings)} porciones</div>}
+    </div>}
+    <div style={{background:T.surface2,borderRadius:8,padding:'10px 12px',marginBottom:14,border:`1px solid ${T.border}`}}>
+      <div style={{fontSize:9,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición total</div>
+      <NutrBar n={baseN} servings={1/Math.max(0.01,effQty)} compact/>
+    </div>
+    <div style={{display:'flex',gap:7}}><GhostBtn onClick={onBack} T={T} style={{flex:1}}>← Volver</GhostBtn><PrimaryBtn onClick={confirm} T={T} style={{flex:2}}>Confirmar</PrimaryBtn></div>
+  </div>;
+}
+
+// ── FoodAmountPicker ──────────────────────────────────────────────────────────
+function FoodAmountPicker({food,T,onConfirm,onBack}){
+  const [amount,setAmount]=useState(food.serving);
+  const n=useMemo(()=>{if(!amount)return{cal:0,prot:0,carbs:0,fat:0,fiber:0};const r=amount/food.serving;return{cal:food.cal*r,prot:food.prot*r,carbs:food.carbs*r,fat:food.fat*r,fiber:food.fiber*r};},[amount,food]);
+  return <div style={{padding:'14px 20px',background:T.surface}}>
+    <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:2}}>{food.name}</div>
+    <div style={{fontSize:11,color:T.text2,marginBottom:16}}>¿Cuánto vas a consumir?</div>
+    <div style={{marginBottom:16}}>
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:10}}>Cantidad ({food.unit})</div>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <button onClick={()=>setAmount(a=>Math.max(0,a-food.serving))} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+        <div style={{flex:1,position:'relative'}}>
+          <input type="number" min="0" value={amount} onChange={e=>setAmount(+e.target.value||0)} style={{width:'100%',padding:'10px 40px 10px 10px',fontSize:16,fontWeight:700,textAlign:'center',border:`1px solid ${T.border2}`,borderRadius:7,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
+          <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',fontSize:11,color:T.text2,pointerEvents:'none'}}>{food.unit}</span>
+        </div>
+        <button onClick={()=>setAmount(a=>a+food.serving)} style={{width:38,height:38,borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+      </div>
+    </div>
+    {amount>0&&<div style={{background:T.surface2,borderRadius:8,padding:'10px 12px',marginBottom:14,border:`1px solid ${T.border}`}}><div style={{fontSize:9,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición</div><NutrBar n={n} compact/></div>}
+    <div style={{display:'flex',gap:7}}><GhostBtn onClick={onBack} T={T} style={{flex:1}}>← Volver</GhostBtn><PrimaryBtn onClick={()=>amount>0&&onConfirm({foodId:food.id,amount,unit:food.unit})} T={T} disabled={!amount} style={{flex:2}}>Confirmar</PrimaryBtn></div>
+  </div>;
+}
+
+// ── AddSlotModal ──────────────────────────────────────────────────────────────
+function AddSlotModal({date,meal,recipes,foods,pantry,addToSlot,T,close}){
+  const [listTab,setListTab]=useState('recetas');const [q,setQ]=useState('');const [selRec,setSelRec]=useState(null);const [selFood,setSelFood]=useState(null);
+  const mc=T.meal[meal];const fmt=d=>d.toLocaleDateString('es-CO',{day:'numeric',month:'long'});
+  const getMissR=rec=>rec.ingredients.filter(({foodId,amount})=>(pantry.find(p=>p.foodId===foodId)?.amount||0)<amount).length;
+  const recList=recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase()));
+  const foodList=foods.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
+  const slotKey=`${dKey(date)}_${meal}`;
+  const step=selRec?'qtyR':selFood?'qtyF':'list';
+  return <>
+    <div style={{padding:'14px 18px 12px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'flex-start',gap:8,background:T.surface}}>
+      <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:T.text}}>{step==='list'?'Añadir':'Cantidad'}</div><div style={{fontSize:11,color:T.text2,marginTop:3}}><span style={{background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,padding:'1px 6px',borderRadius:9,fontSize:9,fontWeight:700}}>{meal}</span> · {DAYS[(date.getDay()+6)%7]}, {fmt(date)}</div></div>
+      <CloseBtn onClick={close} T={T}/>
+    </div>
+    {step==='qtyR'&&<QtyPicker recipe={selRec} foods={foods} T={T} onConfirm={qty=>{addToSlot(slotKey,{type:'recipe',rId:selRec.id,qty});close();}} onBack={()=>setSelRec(null)}/>}
+    {step==='qtyF'&&<FoodAmountPicker food={selFood} T={T} onConfirm={e=>{addToSlot(slotKey,{type:'food',...e});close();}} onBack={()=>setSelFood(null)}/>}
+    {step==='list'&&<div style={{background:T.surface}}>
+      <div style={{display:'flex',borderBottom:`1px solid ${T.border}`,padding:'0 18px'}}>
+        {[['recetas','📖 Recetas'],['alimentos','🥦 Alimentos']].map(([id,lbl])=><button key={id} onClick={()=>{setListTab(id);setQ('');}} style={{padding:'9px 12px',border:'none',borderBottom:listTab===id?`2px solid ${T.accent}`:'2px solid transparent',background:'none',cursor:'pointer',fontSize:12,fontWeight:700,color:listTab===id?T.accent:T.text2}}>{lbl}</button>)}
+      </div>
+      <div style={{padding:'12px 18px'}}>
+        <input style={{width:'100%',padding:'7px 9px',fontSize:12,border:`1px solid ${T.border2}`,borderRadius:6,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit',marginBottom:10}} placeholder={`Buscar ${listTab}...`} value={q} onChange={e=>setQ(e.target.value)} autoFocus/>
+        <div style={{display:'flex',flexDirection:'column',gap:4,maxHeight:300,overflowY:'auto'}}>
+          {listTab==='recetas'&&recList.map(rec=>{const n=calcN(rec.ingredients,foods);const miss=getMissR(rec);const rmc=T.meal[rec.mealType]||T.meal.Almuerzo;
+            return<div key={rec.id} onClick={()=>setSelRec(rec)} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 11px',borderRadius:8,border:`1px solid ${T.border}`,background:T.surface,cursor:'pointer'}} onMouseOver={e=>e.currentTarget.style.borderColor=T.accent} onMouseOut={e=>e.currentTarget.style.borderColor=T.border}>
+              <div style={{flex:1}}><div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}><span style={{fontSize:12,fontWeight:700,color:T.text}}>{rec.name}</span><span style={{fontSize:9,background:rmc.bg,color:rmc.tc,padding:'0 5px',borderRadius:7,border:`1px solid ${rmc.bc}`}}>{rec.mealType}</span></div><div style={{fontSize:10,color:T.text2}}>{r0(n.cal/rec.servings)} kcal · {r1(n.prot/rec.servings)}g prot</div></div>
+              {miss>0&&<span style={{fontSize:9,background:'#FEF3C7',color:'#92400E',padding:'1px 5px',borderRadius:7,border:'1px solid #F59E0B',flexShrink:0}}>⚠{miss}</span>}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+            </div>;})}
+          {listTab==='alimentos'&&foodList.map(food=><div key={food.id} onClick={()=>setSelFood(food)} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 11px',borderRadius:8,border:`1px solid ${T.border}`,background:T.surface,cursor:'pointer'}} onMouseOver={e=>e.currentTarget.style.borderColor=T.accent} onMouseOut={e=>e.currentTarget.style.borderColor=T.border}>
+            <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>{food.name}</div><div style={{fontSize:10,color:T.text2}}>{food.serving}{food.unit} · {food.cal} kcal · {food.prot}g prot</div></div>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
+          </div>)}
+          {((listTab==='recetas'&&recList.length===0)||(listTab==='alimentos'&&foodList.length===0))&&<div style={{textAlign:'center',padding:20,color:T.text2,fontSize:12}}>Sin resultados.</div>}
+        </div>
+      </div>
+    </div>}
+  </>;
+}
+
+// ── PlanRecipeModal ───────────────────────────────────────────────────────────
+function PlanRecipeModal({recipe,dates,addToSlot,foods,T,close}){
+  const [selD,setSelD]=useState(null);const [selM,setSelM]=useState('');const [step,setStep]=useState(1);
+  return <>
+    <div style={{padding:'14px 18px 12px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',gap:8,background:T.surface}}>
+      <div style={{fontSize:14,fontWeight:700,color:T.text,flex:1}}>{step===1?`Planificar: ${recipe.name}`:'Cantidad'}</div>
+      <CloseBtn onClick={close} T={T}/>
+    </div>
+    {step===1?<div style={{padding:'14px 18px',background:T.surface}}>
+      <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8}}>Día</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3}}>
+          {dates.map((d,i)=>{const sel=selD&&dKey(selD)===dKey(d);return<button key={i} onClick={()=>setSelD(d)} style={{padding:'6px 2px',borderRadius:6,border:`1px solid ${sel?T.accent:T.border}`,background:sel?T.accentDark:T.surface2,color:sel?T.accentText:T.text,cursor:'pointer',textAlign:'center'}}>
+            <div style={{fontSize:8,color:sel?T.accentText:T.text2}}>{DAYS[i].slice(0,3)}</div>
+            <div style={{fontSize:12,fontWeight:700}}>{d.getDate()}</div>
+          </button>;})}
+        </div>
+      </div>
+      <div style={{marginBottom:14}}><div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8}}>Comida</div>
+        <div style={{display:'flex',gap:6}}>{MEALS.map(m=>{const mc=T.meal[m];const act=selM===m;return<button key={m} onClick={()=>setSelM(m)} style={{flex:1,padding:'8px 4px',borderRadius:7,border:`1px solid ${act?mc.bc:T.border}`,background:act?mc.bg:T.surface2,color:act?mc.tc:T.text,cursor:'pointer',fontSize:11,fontWeight:act?700:500}}>{m}</button>;})}</div>
+      </div>
+      <PrimaryBtn onClick={()=>setStep(2)} T={T} disabled={!selD||!selM} style={{width:'100%',justifyContent:'center'}}>Siguiente →</PrimaryBtn>
+    </div>:<QtyPicker recipe={recipe} foods={foods} T={T} onConfirm={qty=>{addToSlot(`${dKey(selD)}_${selM}`,{type:'recipe',rId:recipe.id,qty});close();}} onBack={()=>setStep(1)}/>}
+  </>;
+}
+
+// ── DetailModal ───────────────────────────────────────────────────────────────
+function DetailModal({recipe,foods,pantry,T,close,setModal}){
+  const FALLBACK={Desayuno:{bg:'#FFFBEB',bc:'#F59E0B',tc:'#78350F'},Almuerzo:{bg:'#F0FDF4',bc:'#22C55E',tc:'#14532D'},Cena:{bg:'#EFF6FF',bc:'#3B82F6',tc:'#1E3A8A'}};
+  const mc=(T?T.meal:FALLBACK)[recipe.mealType]||FALLBACK.Almuerzo;
+  const n=calcN(recipe.ingredients,foods);
+  const ts=T||{surface:'#fff',text:'#1a1a1a',text2:'#666',border:'#e0e0e0',surface2:'#f5f5f0'};
+  const missing=recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const have=pantry.find(p=>p.foodId===foodId)?.amount||0;if(have<amount)return{f,needed:amount,have,unit};return null;}).filter(Boolean);
+  return <>
+    <div style={{padding:'14px 18px 12px',borderBottom:`1px solid ${ts.border}`,display:'flex',alignItems:'flex-start',gap:8,background:ts.surface}}>
+      <div style={{flex:1}}><span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:6}}>{recipe.mealType}</span><div style={{fontSize:15,fontWeight:700,color:ts.text}}>{recipe.name}</div><div style={{fontSize:11,color:ts.text2,marginTop:2}}>{recipe.desc}</div></div>
+      <CloseBtn onClick={close} T={ts}/>
+    </div>
+    <div style={{padding:'14px 18px',background:ts.surface}}>
+      <div style={{fontSize:12,color:ts.text2,marginBottom:12}}>⏱ {recipe.prepTime} min · 👥 {recipe.servings} porción{recipe.servings>1?'es':''}</div>
+      {missing.length>0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:6,padding:'8px 10px',marginBottom:10,fontSize:11,color:'#92400E'}}><div style={{fontWeight:700,marginBottom:3}}>⚠ Faltantes:</div>{missing.map(({f,needed,have,unit})=><div key={f.id}>• {f.name}: necesitas {needed}{unit}, tienes {have}</div>)}</div>}
+      <div style={{marginBottom:12}}><div style={{fontSize:9,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición por porción</div><NutrBar n={n} servings={recipe.servings}/></div>
+      <div style={{marginBottom:12}}><div style={{fontSize:9,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Ingredientes</div>
+        {recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const ok=(pantry.find(p=>p.foodId===foodId)?.amount||0)>=amount;return f?<div key={foodId} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:`1px solid ${ts.border}`,fontSize:11,color:ts.text}}><span>{f.name}</span><div style={{display:'flex',gap:6,alignItems:'center'}}><span style={{color:ts.text2}}>{amount} {unit}</span><span style={{fontSize:9,background:ok?'#DCFCE7':'#FEF3C7',color:ok?'#14532D':'#92400E',padding:'1px 5px',borderRadius:8}}>{ok?'✓':'⚠'}</span></div></div>:null;})}
+      </div>
+      {recipe.instructions&&<div style={{marginBottom:14}}><div style={{fontSize:9,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Preparación</div><div style={{fontSize:12,lineHeight:1.8,whiteSpace:'pre-line',color:ts.text}}>{recipe.instructions}</div></div>}
+      {T&&<PrimaryBtn onClick={()=>setModal({type:'planRecipe',recipe})} T={T} style={{width:'100%',justifyContent:'center'}}>+ Añadir al planificador</PrimaryBtn>}
+    </div>
+  </>;
+}
+
+// ── PlannerTab ────────────────────────────────────────────────────────────────
+function PlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
+  const fmt=d=>d.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+  return <div style={{padding:14,fontFamily:T.font}}>
+    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+      <button onClick={()=>setWeekOff(w=>w-1)} style={{padding:'5px 11px',borderRadius:6,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:12,fontWeight:700}}>◀</button>
+      <span style={{flex:1,textAlign:'center',fontSize:13,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':`${fmt(dates[0])} — ${fmt(dates[6])}`}</span>
+      <button onClick={()=>setWeekOff(w=>w+1)} style={{padding:'5px 11px',borderRadius:6,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:12,fontWeight:700}}>▶</button>
+      {weekOff!==0&&<button onClick={()=>setWeekOff(0)} style={{padding:'5px 10px',borderRadius:6,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:12,fontWeight:700}}>Hoy</button>}
+    </div>
+    <div style={{overflowX:'auto'}}>
+      <div style={{display:'grid',gridTemplateColumns:'50px repeat(7,minmax(95px,1fr))',gap:3,minWidth:700}}>
+        <div/>
+        {dates.map((d,i)=>{const today=isToday(d);return<div key={i} style={{padding:'6px 4px',textAlign:'center',borderRadius:6,background:today?T.accent:T.surface2,color:today?T.accentText:T.text}}><div style={{fontSize:9,opacity:.7}}>{DAYS[(d.getDay()+6)%7].slice(0,3).toUpperCase()}</div><div style={{fontSize:13,fontWeight:700}}>{d.getDate()}</div>{today&&<div style={{fontSize:8}}>hoy</div>}</div>;})}
+        {MEALS.map(meal=>{const mc=T.meal[meal];return<React.Fragment key={meal}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:5,fontSize:9,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:.3}}>{meal.slice(0,3)}</div>
+          {dates.map((d,di)=>{const key=`${dKey(d)}_${meal}`;const slot=planner[key]||[];
+            return<div key={di} style={{minHeight:75,background:T.surface,border:`1px solid ${isToday(d)?T.accent:T.border}`,borderRadius:7,padding:4,display:'flex',flexDirection:'column',gap:3}}>
+              {slot.map((entry,ri)=>{const label=slotLabel(entry,recipes,foods);const clickable=entry.type==='recipe';
+                return<div key={ri} style={{display:'flex',alignItems:'center',background:mc.bg,border:`1px solid ${mc.bc}`,borderRadius:4,padding:'2px 5px',gap:2}}>
+                  <span onClick={()=>{if(clickable){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}} style={{fontSize:9,fontWeight:700,color:mc.tc,flex:1,lineHeight:1.3,cursor:clickable?'pointer':'default'}}>{label}</span>
+                  <button onClick={()=>rmFromSlot(key,ri)} style={{background:'none',border:'none',cursor:'pointer',padding:1,color:mc.tc,opacity:.7,flexShrink:0,fontSize:10}}>✕</button>
+                </div>;})}
+              <button onClick={()=>setModal({type:'addSlot',date:d,meal})} style={{marginTop:'auto',display:'flex',alignItems:'center',justifyContent:'center',padding:'3px',border:`1px dashed ${T.border2}`,borderRadius:4,background:'none',cursor:'pointer',color:T.text3,fontSize:11}}>+</button>
+            </div>;})}
+        </React.Fragment>;})}
+      </div>
+    </div>
+  </div>;
+}
+
+// ── RecipesTab ────────────────────────────────────────────────────────────────
+function RecipesTab({recipes,setRecipes,foods,pantry,setModal}){
+  const [q,setQ]=useState('');const [mf,setMf]=useState('');
+  const MC={Desayuno:{bg:'#FFFBEB',bc:'#F59E0B',tc:'#78350F'},Almuerzo:{bg:'#F0FDF4',bc:'#22C55E',tc:'#14532D'},Cena:{bg:'#EFF6FF',bc:'#3B82F6',tc:'#1E3A8A'}};
+  const list=recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase())&&(!mf||r.mealType===mf));
+  const del=id=>{if(window.confirm('¿Eliminar receta?'))setRecipes(r=>r.filter(x=>x.id!==id));};
+  const getMiss=rec=>rec.ingredients.filter(({foodId,amount})=>(pantry.find(p=>p.foodId===foodId)?.amount||0)<amount).length;
+  return <div style={{padding:16}}>
+    <div style={{display:'flex',gap:7,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
+      <input style={{flex:1,minWidth:140,padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,outline:'none',fontFamily:'inherit'}} placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)}/>
+      <S value={mf} onChange={e=>setMf(e.target.value)} style={{width:110}}><option value="">Todos</option>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</S>
+      <button onClick={()=>setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])})} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Nueva receta</button>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:10}}>
+      {list.map(rec=>{const n=calcN(rec.ingredients,foods);const mc=MC[rec.mealType]||MC.Almuerzo;const miss=getMiss(rec);
+        return<div key={rec.id} style={{background:'#fff',borderRadius:10,border:'1px solid #e0e0e0',padding:14,display:'flex',flexDirection:'column',gap:8}}>
+          <div><span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:5}}>{rec.mealType}</span><div style={{fontSize:14,fontWeight:700}}>{rec.name}</div><div style={{fontSize:11,color:'#666',marginTop:2}}>{rec.desc}</div></div>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:10,color:'#666'}}>⏱ {rec.prepTime}min · {rec.servings} ración{rec.servings>1?'es':''}</span>{miss>0&&<span style={{fontSize:9,background:'#FEF3C7',color:'#92400E',padding:'2px 5px',borderRadius:9,border:'1px solid #F59E0B'}}>⚠ {miss} faltante{miss>1?'s':''}</span>}</div>
+          <NutrBar n={n} servings={rec.servings} compact/>
+          <div style={{display:'flex',gap:5}}>
+            <button onClick={()=>setModal({type:'detail',recipe:rec})} style={{padding:'4px 9px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:11,fontWeight:600}}>Ver</button>
+            <button onClick={()=>setModal({type:'planRecipe',recipe:rec})} style={{padding:'4px 9px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:11,fontWeight:700}}>+ Plan</button>
+            <div style={{flex:1}}/>
+            <button onClick={()=>setModal({type:'recipeForm',recipe:rec,onSave:r=>setRecipes(rs=>rs.map(x=>x.id===r.id?r:x))})} style={{padding:'4px 9px',borderRadius:6,border:'1px solid #ccc',background:'transparent',color:'#666',cursor:'pointer',fontSize:11}}>✏</button>
+            <button onClick={()=>del(rec.id)} style={{padding:'4px 9px',borderRadius:6,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button>
+          </div>
+        </div>;})}
+      {list.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:'40px 0',color:'#666'}}><div style={{fontSize:32,marginBottom:8}}>🍽</div><div style={{fontSize:13}}>No hay recetas aún.</div></div>}
+    </div>
+  </div>;
+}
+
+// ── FoodsTab ──────────────────────────────────────────────────────────────────
+function FoodsTab({foods,setFoods}){
+  const [q,setQ]=useState('');const [ef,setEf]=useState(null);const [form,setForm]=useState({});
+  const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const openNew=()=>{setEf({});setForm({name:'',cal:'',prot:'',carbs:'',fat:'',fiber:'',serving:'100',unit:'g'});};
+  const openEdit=f=>{setEf(f);setForm({...f});};
+  const save=()=>{const f={id:ef.id||uid(),name:form.name,cal:+form.cal||0,prot:+form.prot||0,carbs:+form.carbs||0,fat:+form.fat||0,fiber:+form.fiber||0,serving:+form.serving||100,unit:form.unit||'g'};if(!f.name)return;if(ef.id)setFoods(fs=>fs.map(x=>x.id===f.id?f:x));else setFoods(fs=>[...fs,f]);setEf(null);};
+  const del=id=>{if(window.confirm('¿Eliminar?'))setFoods(fs=>fs.filter(f=>f.id!==id));};
+  const filtered=foods.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
+  return <div style={{padding:16}}>
+    <div style={{display:'flex',gap:7,marginBottom:12,alignItems:'center'}}>
+      <input style={{flex:1,padding:'7px 9px',fontSize:12,border:'1px solid #ccc',borderRadius:6,outline:'none',fontFamily:'inherit'}} placeholder="Buscar alimentos..." value={q} onChange={e=>setQ(e.target.value)}/>
+      <button onClick={openNew} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Nuevo</button>
+    </div>
+    {ef!==null&&<div style={{background:'#fff',borderRadius:10,border:'1px solid #ccc',padding:16,marginBottom:14}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>{ef.id?'Editar':'Nuevo'} alimento</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+        <LF t="Nombre"><I value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Ej: Leche"/></LF>
+        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:8}}><LF t="Porción base"><I type="number" value={form.serving} onChange={e=>fp('serving',e.target.value)}/></LF><LF t="Unidad"><I value={form.unit} onChange={e=>fp('unit',e.target.value)}/></LF></div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:12}}>
+        {[['cal','Kcal'],['prot','Prot (g)'],['carbs','Carbs (g)'],['fat','Grasa (g)'],['fiber','Fibra (g)']].map(([k,l])=><LF key={k} t={l}><I type="number" value={form[k]} onChange={e=>fp(k,e.target.value)} placeholder="0"/></LF>)}
+      </div>
+      <div style={{display:'flex',gap:7}}><button onClick={save} style={{padding:'7px 14px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{padding:'7px 12px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:12}}>Cancelar</button></div>
+    </div>}
+    <div style={{background:'#fff',borderRadius:10,border:'1px solid #e0e0e0',overflow:'auto'}}>
+      <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
+        <thead><tr style={{background:'#f5f5f0'}}>{['Alimento','Porción','Kcal','Prot','Carbs','Grasa','Fibra',''].map(h=><th key={h} style={{padding:'8px 10px',textAlign:'left',fontSize:9,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',borderBottom:'1px solid #e0e0e0'}}>{h}</th>)}</tr></thead>
+        <tbody>{filtered.map(f=><tr key={f.id} style={{borderBottom:'1px solid #f0f0f0'}}>
+          <td style={{padding:'7px 10px',fontWeight:600,fontSize:12}}>{f.name}</td><td style={{padding:'7px 10px',fontSize:11,color:'#666'}}>{f.serving}{f.unit}</td><td style={{padding:'7px 10px',fontSize:11}}>{f.cal}</td>
+          <td style={{padding:'7px 10px',fontSize:11,color:'#14532D'}}>{f.prot}g</td><td style={{padding:'7px 10px',fontSize:11,color:'#1E3A8A'}}>{f.carbs}g</td><td style={{padding:'7px 10px',fontSize:11,color:'#581C87'}}>{f.fat}g</td><td style={{padding:'7px 10px',fontSize:11,color:'#7C2D12'}}>{f.fiber}g</td>
+          <td style={{padding:'7px 10px'}}><div style={{display:'flex',gap:4}}><button onClick={()=>openEdit(f)} style={{padding:'3px 7px',borderRadius:5,border:'1px solid #ccc',background:'transparent',color:'#666',cursor:'pointer',fontSize:11}}>✏</button><button onClick={()=>del(f.id)} style={{padding:'3px 7px',borderRadius:5,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button></div></td>
+        </tr>)}</tbody>
+      </table>
+      {filtered.length===0&&<div style={{textAlign:'center',padding:24,color:'#666',fontSize:12}}>No hay alimentos.</div>}
+    </div>
+  </div>;
+}
+
+// ── PantryTab ─────────────────────────────────────────────────────────────────
+function PantryTab({pantry,setPantry,foods}){
+  const [ef,setEf]=useState(null);const [form,setForm]=useState({foodId:'',amount:''});
+  const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const save=()=>{if(!form.foodId||!form.amount)return;const item={foodId:form.foodId,amount:+form.amount};if(ef&&ef.foodId)setPantry(p=>p.map(x=>x.foodId===ef.foodId?item:x));else{const ex=pantry.find(p=>p.foodId===form.foodId);if(ex)setPantry(p=>p.map(x=>x.foodId===form.foodId?{...x,amount:x.amount+(+form.amount)}:x));else setPantry(p=>[...p,item]);}setEf(null);};
+  const avail=foods.filter(f=>!pantry.find(p=>p.foodId===f.id));
+  return <div style={{padding:16}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+      <div style={{fontSize:14,fontWeight:700}}>Alacena ({pantry.length} ingrediente{pantry.length!==1?'s':''})</div>
+      <button onClick={()=>{setEf({});setForm({foodId:'',amount:''}); }} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Añadir</button>
+    </div>
+    {ef!==null&&<div style={{background:'#fff',borderRadius:10,border:'1px solid #ccc',padding:14,marginBottom:12}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+        <LF t="Alimento"><S value={form.foodId} onChange={e=>fp('foodId',e.target.value)}><option value="">Seleccionar...</option>{(ef.foodId?foods:avail).map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</S></LF>
+        <LF t={`Cantidad${form.foodId?' ('+foods.find(f=>f.id===form.foodId)?.unit+')':''}`}><I type="number" value={form.amount} onChange={e=>fp('amount',e.target.value)} placeholder="0"/></LF>
+      </div>
+      <div style={{display:'flex',gap:7}}><button onClick={save} style={{padding:'7px 14px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{padding:'7px 12px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:12}}>Cancelar</button></div>
+    </div>}
+    {pantry.length===0&&ef===null&&<div style={{textAlign:'center',padding:'40px 0',color:'#666',background:'#fff',borderRadius:10,border:'1px solid #e0e0e0'}}><div style={{fontSize:32,marginBottom:8}}>🏠</div><div style={{fontSize:13}}>Tu alacena está vacía.</div></div>}
+    <div style={{display:'flex',flexDirection:'column',gap:5}}>
+      {pantry.map(item=>{const f=foods.find(x=>x.id===item.foodId);if(!f)return null;return<div key={item.foodId} style={{display:'flex',alignItems:'center',background:'#fff',borderRadius:8,border:'1px solid #e0e0e0',padding:'10px 14px',gap:10}}>
+        <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{f.name}</div><div style={{fontSize:11,color:'#666'}}>{item.amount} {f.unit}</div></div>
+        <button onClick={()=>{setEf(item);setForm({foodId:item.foodId,amount:item.amount});}} style={{padding:'3px 8px',borderRadius:5,border:'1px solid #ccc',background:'transparent',color:'#666',cursor:'pointer',fontSize:11}}>✏</button>
+        <button onClick={()=>setPantry(p=>p.filter(x=>x.foodId!==item.foodId))} style={{padding:'3px 8px',borderRadius:5,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button>
+      </div>;})}
+    </div>
+  </div>;
+}
+
+// ── ShopTab ───────────────────────────────────────────────────────────────────
+function ShopTab({shopList,shopChk,setShopChk,setPantry}){
+  const addToPantry=item=>{setPantry(p=>{const ex=p.find(x=>x.foodId===item.foodId);if(ex)return p.map(x=>x.foodId===item.foodId?{...x,amount:+(x.amount+item.missing).toFixed(1)}:x);return[...p,{foodId:item.foodId,amount:item.missing}];});setShopChk(c=>({...c,[item.foodId]:true}));};
+  const undoItem=item=>{setPantry(p=>{const ex=p.find(x=>x.foodId===item.foodId);if(!ex)return p;const n=+(ex.amount-item.missing).toFixed(1);if(n<=0)return p.filter(x=>x.foodId!==item.foodId);return p.map(x=>x.foodId===item.foodId?{...x,amount:n}:x);});setShopChk(c=>({...c,[item.foodId]:false}));};
+  const pending=shopList.filter(i=>!shopChk[i.foodId]);const done=shopList.filter(i=>shopChk[i.foodId]);
+  if(shopList.length===0)return<div style={{textAlign:'center',padding:'60px 20px',color:'#666'}}><div style={{fontSize:40,marginBottom:12}}>✅</div><div style={{fontSize:16,fontWeight:700}}>¡Todo listo!</div><div style={{fontSize:13,marginTop:6}}>No faltan ingredientes.</div></div>;
+  return <div style={{padding:16}}>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:8}}>
+      <div><div style={{fontSize:14,fontWeight:700}}>{pending.length} ítem{pending.length!==1?'s':''} pendiente{pending.length!==1?'s':''}</div><div style={{fontSize:11,color:'#666',marginTop:2}}>Jeff 🌑 + Lia 🌸 · al marcar se añade a la alacena</div></div>
+      {pending.length>0&&<button onClick={()=>pending.forEach(i=>addToPantry(i))} style={{padding:'7px 12px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:12,fontWeight:700}}>Marcar todo</button>}
+    </div>
+    <div style={{display:'flex',flexDirection:'column',gap:5}}>
+      {pending.map(item=><div key={item.foodId} style={{display:'flex',alignItems:'center',gap:10,background:'#fff',borderRadius:8,border:'1px solid #e0e0e0',padding:'10px 14px'}}>
+        <button onClick={()=>addToPantry(item)} title="Marcar comprado" style={{width:20,height:20,borderRadius:5,border:'1px solid #ccc',background:'none',cursor:'pointer',flexShrink:0}}/>
+        <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{item.food.name}</div><div style={{fontSize:10,color:'#888'}}>{item.forPersons&&item.forPersons.length>0&&<span style={{marginRight:6}}>{item.forPersons.map(p=>THEMES[p].emoji).join(' ')}</span>}Tienes {item.have} {item.food.unit}</div></div>
+        <span style={{fontSize:12,fontWeight:700,color:'#DC2626',flexShrink:0}}>+{item.missing} {item.food.unit}</span>
+      </div>)}
+      {done.length>0&&<><div style={{fontSize:9,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginTop:10,marginBottom:4}}>Comprados y en alacena</div>
+        {done.map(item=><div key={item.foodId} style={{display:'flex',alignItems:'center',gap:10,background:'#f5f5f0',borderRadius:8,border:'1px solid #e0e0e0',padding:'10px 14px',opacity:.55}}>
+          <button onClick={()=>undoItem(item)} style={{width:20,height:20,borderRadius:5,background:'#1a3d0b',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg></button>
+          <div style={{fontSize:13,textDecoration:'line-through',flex:1}}>{item.food.name} — {item.missing} {item.food.unit}</div>
+        </div>)}</>}
+    </div>
+  </div>;
+}
+
+// ── RecipeFormModal ───────────────────────────────────────────────────────────
+function RecipeFormModal({recipe,foods,onSave,close}){
+  const [form,setForm]=useState(recipe?{...recipe}:{id:uid(),name:'',servings:1,prepTime:15,mealType:'Almuerzo',desc:'',ingredients:[],instructions:''});
+  const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const addIngr=()=>setForm(f=>({...f,ingredients:[...f.ingredients,{foodId:'',amount:'',unit:'g'}]}));
+  const setIngr=(i,k,v)=>setForm(f=>{const a=[...f.ingredients];a[i]={...a[i],[k]:v};if(k==='foodId'){const food=foods.find(x=>x.id===v);if(food)a[i].unit=food.unit;}return{...f,ingredients:a};});
+  const rmIngr=i=>setForm(f=>({...f,ingredients:f.ingredients.filter((_,j)=>j!==i)}));
+  const save=()=>{if(!form.name)return;const ingrs=form.ingredients.filter(i=>i.foodId&&i.amount).map(i=>({...i,amount:+i.amount}));onSave({...form,servings:+form.servings,prepTime:+form.prepTime,ingredients:ingrs});close();};
+  const preview=calcN(form.ingredients.filter(i=>i.foodId&&i.amount).map(i=>({...i,amount:+i.amount})),foods);
+  return <>
+    <div style={{padding:'14px 18px 12px',borderBottom:'1px solid #e0e0e0',display:'flex',alignItems:'center',gap:8}}><div style={{fontSize:14,fontWeight:700,flex:1}}>{recipe?'Editar':'Nueva'} receta</div><CloseBtn onClick={close}/></div>
+    <div style={{padding:'14px 18px'}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:2}}><LF t="Nombre"><I value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Nombre"/></LF><LF t="Tipo"><S value={form.mealType} onChange={e=>fp('mealType',e.target.value)}>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</S></LF></div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:2}}><LF t="Porciones"><I type="number" value={form.servings} onChange={e=>fp('servings',e.target.value)} min="1"/></LF><LF t="Tiempo (min)"><I type="number" value={form.prepTime} onChange={e=>fp('prepTime',e.target.value)} min="0"/></LF></div>
+      <LF t="Descripción"><I value={form.desc} onChange={e=>fp('desc',e.target.value)} placeholder="Descripción breve"/></LF>
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:8,display:'flex',justifyContent:'space-between',alignItems:'center'}}>Ingredientes<button onClick={addIngr} style={{padding:'3px 8px',borderRadius:5,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:11,fontWeight:700}}>+ Añadir</button></div>
+        {form.ingredients.map((ingr,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 70px 70px 28px',gap:6,marginBottom:6,alignItems:'center'}}>
+          <S value={ingr.foodId} onChange={e=>setIngr(i,'foodId',e.target.value)}><option value="">Alimento...</option>{foods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</S>
+          <I type="number" value={ingr.amount} onChange={e=>setIngr(i,'amount',e.target.value)} placeholder="Cant."/>
+          <I value={ingr.unit} onChange={e=>setIngr(i,'unit',e.target.value)} placeholder="Unidad"/>
+          <button onClick={()=>rmIngr(i)} style={{padding:'4px',borderRadius:5,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:11}}>✕</button>
+        </div>)}
+        {form.ingredients.length===0&&<div style={{fontSize:12,color:'#666',textAlign:'center',padding:10,background:'#f5f5f0',borderRadius:6}}>Sin ingredientes.</div>}
+      </div>
+      {form.ingredients.some(i=>i.foodId&&i.amount)&&<div style={{marginBottom:10}}><div style={{fontSize:9,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',marginBottom:7}}>Nutrición por porción</div><NutrBar n={preview} servings={+form.servings||1} compact/></div>}
+      <LF t="Instrucciones"><textarea value={form.instructions} onChange={e=>fp('instructions',e.target.value)} placeholder="Pasos de preparación..." style={{width:'100%',padding:'8px 10px',fontSize:12,border:'1px solid #ccc',borderRadius:6,background:'#fff',color:'#1a1a1a',outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:80}}/></LF>
+      <div style={{display:'flex',gap:7,marginTop:4}}><button onClick={save} style={{padding:'8px 16px',borderRadius:6,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Guardar receta</button><button onClick={close} style={{padding:'8px 12px',borderRadius:6,border:'1px solid #ccc',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:12}}>Cancelar</button></div>
+    </div>
+  </>;
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+function App(){
+  const [appReady,setAppReady]=useState(!IS_CONFIGURED);
+  const [syncStatus,setSyncStatus]=useState('idle'); // idle | saving | saved | error
+  const [tab,setTab]=useState('planner');
+  const [person,setPerson]=useState('jeff');
+  const [weekOff,setWeekOff]=useState(0);
+  const [foods,setFoods]=useState(FOODS0);
+  const [recipes,setRecipes]=useState(RECIPES0);
+  const [pantry,setPantry]=useState([]);
+  const [planners,setPlanners]=useState({jeff:{},lia:{}});
+  const [modal,setModal]=useState(null);
+  const [shopChk,setShopChk]=useState({});
+  const T=THEMES[person];
+  const dates=useMemo(()=>weekDates(weekOff),[weekOff]);
+  const saveTimer=useRef(null);
+  const isFirstLoad=useRef(true);
+
+  // Load from Supabase on mount
+  useEffect(()=>{
+    if(!IS_CONFIGURED)return;
+    setSyncStatus('saving');
+    dbLoad().then(data=>{
+      if(data){
+        if(data.foods)setFoods(data.foods);
+        if(data.recipes)setRecipes(data.recipes);
+        if(data.pantry)setPantry(data.pantry);
+        if(data.planners)setPlanners(data.planners);
+        if(data.shopChk)setShopChk(data.shopChk);
+      }
+      setAppReady(true);
+      setSyncStatus('saved');
+      setTimeout(()=>setSyncStatus('idle'),2000);
+    }).catch(()=>{setAppReady(true);setSyncStatus('error');});
+  },[]);
+
+  // Auto-save when state changes (debounced 1.2s)
+  useEffect(()=>{
+    if(!IS_CONFIGURED||!appReady)return;
+    if(isFirstLoad.current){isFirstLoad.current=false;return;}
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    setSyncStatus('saving');
+    saveTimer.current=setTimeout(async()=>{
+      try{
+        await Promise.all([
+          dbSave('foods',foods),dbSave('recipes',recipes),
+          dbSave('pantry',pantry),dbSave('planners',planners),
+          dbSave('shopChk',shopChk),
+        ]);
+        setSyncStatus('saved');
+        setTimeout(()=>setSyncStatus('idle'),2500);
+      }catch{setSyncStatus('error');}
+    },1200);
+  },[foods,recipes,pantry,planners,shopChk]);
+
+  // Poll for remote changes every 45s (for multi-device sync)
+  useEffect(()=>{
+    if(!IS_CONFIGURED)return;
+    const interval=setInterval(async()=>{
+      const data=await dbLoad();
+      if(!data)return;
+      if(data.planners)setPlanners(data.planners);
+      if(data.pantry)setPantry(data.pantry);
+      if(data.shopChk)setShopChk(data.shopChk);
+    },45000);
+    return()=>clearInterval(interval);
+  },[]);
+
+  const addToSlot=(key,entry)=>setPlanners(p=>({...p,[person]:{...p[person],[key]:[...(p[person][key]||[]),entry]}}));
+  const rmFromSlot=(key,i)=>setPlanners(p=>{const a=[...(p[person][key]||[])];a.splice(i,1);return{...p,[person]:{...p[person],[key]:a}};});
+
+  const shopList=useMemo(()=>{
+    const needed={};const forPerson={};
+    ['jeff','lia'].forEach(pid=>{
+      Object.values(planners[pid]||{}).forEach(entries=>(entries||[]).forEach(entry=>{
+        if(entry.type==='food'){
+          const f=foods.find(x=>x.id===entry.foodId);if(!f)return;
+          needed[entry.foodId]=(needed[entry.foodId]||0)+entry.amount;
+          if(!forPerson[entry.foodId])forPerson[entry.foodId]=new Set();forPerson[entry.foodId].add(pid);
+        }else{
+          const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return;
+          rec.ingredients.forEach(({foodId,amount})=>{
+            needed[foodId]=(needed[foodId]||0)+(amount/rec.servings)*(entry.qty||1);
+            if(!forPerson[foodId])forPerson[foodId]=new Set();forPerson[foodId].add(pid);
+          });
+        }
+      }));
+    });
+    return Object.entries(needed).map(([fId,amt])=>{const f=foods.find(x=>x.id===fId);if(!f)return null;const have=pantry.find(p=>p.foodId===fId)?.amount||0;const missing=r1(Math.max(0,amt-have));if(missing<=0)return null;return{foodId:fId,food:f,needed:r1(amt),have,missing,forPersons:[...(forPerson[fId]||[])]};}).filter(Boolean);
+  },[planners,pantry,recipes,foods]);
+
+  const TABS=[{id:'planner',icon:'📅',label:'Planificador'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Alimentos'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length}];
+
+  if(!appReady)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f5f0',flexDirection:'column',gap:16}}>
+    <div style={{width:36,height:36,border:'3px solid #e0e0e0',borderTop:'3px solid #1a3d0b',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/>
+    <div style={{fontSize:13,color:'#666'}}>Cargando datos…</div>
+  </div>;
+
+  const syncDot={idle:null,saving:<span style={{fontSize:10,color:'#666',display:'flex',alignItems:'center',gap:4,flexShrink:0}}><span style={{width:6,height:6,borderRadius:'50%',border:'1.5px solid #ccc',borderTop:'1.5px solid #666',display:'inline-block',animation:'spin .7s linear infinite'}}/>Guardando</span>,saved:<span style={{fontSize:10,color:'#22c55e',display:'flex',alignItems:'center',gap:4,flexShrink:0}}>✓ Guardado</span>,error:<span style={{fontSize:10,color:'#ef4444',flexShrink:0}}>⚠ Error al guardar</span>}[syncStatus];
+
+  return <div style={{minHeight:'100vh',background:tab==='planner'?T.bg:'#f5f5f0',transition:'background .3s',fontFamily:"'Space Grotesk',sans-serif",fontSize:13}}>
+    <div style={{maxWidth:1100,margin:'0 auto'}}>
+      <div style={{background:'#fff',borderBottom:'1px solid #e0e0e0',position:'sticky',top:0,zIndex:40,padding:'0 16px'}}>
+        <div style={{display:'flex',alignItems:'center',overflowX:'auto'}}>
+          <div style={{fontSize:15,fontWeight:800,color:'#1a3d0b',padding:'12px 14px 12px 0',flexShrink:0}}>🥗 Meal Planner</div>
+          {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:'flex',alignItems:'center',gap:5,padding:'14px 10px',border:'none',borderBottom:tab===t.id?'2px solid #1a3d0b':'2px solid transparent',background:'none',cursor:'pointer',fontSize:12,fontWeight:600,color:tab===t.id?'#1a3d0b':'#666',whiteSpace:'nowrap'}}>
+            {t.icon} {t.label}{t.badge>0&&<span style={{background:'#DC2626',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px'}}>{t.badge}</span>}
+          </button>)}
+          <div style={{marginLeft:'auto',padding:'0 4px',flexShrink:0}}>{syncDot}</div>
+        </div>
+      </div>
+
+      {tab==='planner'&&<div style={{background:T.bg,minHeight:'calc(100vh - 50px)',transition:'background .3s'}}>
+        <div style={{padding:'10px 16px',borderBottom:`1px solid ${T.border}`,display:'flex',gap:8,alignItems:'center',background:T.surface,fontFamily:T.font}}>
+          <span style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px'}}>Planificador de</span>
+          {['jeff','lia'].map(pid=>{const th=THEMES[pid];const active=person===pid;return<button key={pid} onClick={()=>setPerson(pid)} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 14px',borderRadius:20,border:`1.5px solid ${active?th.accent:T.border2}`,background:active?th.accentDark:'transparent',color:active?th.accentText:T.text2,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:th.font,transition:'all .15s'}}>
+            {th.emoji} {th.name}
+          </button>;})}
+        </div>
+        <PlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
+      </div>}
+      {tab==='recipes'&&<RecipesTab recipes={recipes} setRecipes={setRecipes} foods={foods} pantry={pantry} setModal={setModal}/>}
+      {tab==='foods'&&<FoodsTab foods={foods} setFoods={setFoods}/>}
+      {tab==='pantry'&&<PantryTab pantry={pantry} setPantry={setPantry} foods={foods}/>}
+      {tab==='shop'&&<ShopTab shopList={shopList} shopChk={shopChk} setShopChk={setShopChk} setPantry={setPantry}/>}
+    </div>
+
+    {modal&&<div onClick={()=>setModal(null)} style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'48px 14px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:tab==='planner'?T.surface:'#fff',borderRadius:14,border:`1px solid ${tab==='planner'?T.border:'#e0e0e0'}`,boxShadow:'0 24px 64px rgba(0,0,0,.22)',width:'100%',maxWidth:500,maxHeight:'86vh',overflowY:'auto',fontFamily:tab==='planner'?T.font:"'Space Grotesk',sans-serif"}}>
+        {modal.type==='detail'&&<DetailModal recipe={modal.recipe} foods={foods} pantry={pantry} T={tab==='planner'?T:null} close={()=>setModal(null)} setModal={setModal}/>}
+        {modal.type==='addSlot'&&<AddSlotModal date={modal.date} meal={modal.meal} recipes={recipes} foods={foods} pantry={pantry} addToSlot={addToSlot} T={T} close={()=>setModal(null)}/>}
+        {modal.type==='planRecipe'&&<PlanRecipeModal recipe={modal.recipe} dates={dates} addToSlot={addToSlot} foods={foods} T={T} close={()=>setModal(null)}/>}
+        {modal.type==='recipeForm'&&<RecipeFormModal recipe={modal.recipe} foods={foods} onSave={modal.onSave} close={()=>setModal(null)}/>}
+      </div>
+    </div>}
+  </div>;
+}
+
+// Entry point — show setup screen if not configured
+function Root(){
+  return IS_CONFIGURED ? <App/> : <SetupScreen/>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>
