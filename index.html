@@ -4,72 +4,86 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
 <title>Meal Planner</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html{height:100%;overflow-x:hidden;}
-body{font-family:'Space Grotesk',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:14px;height:100%;overscroll-behavior:none;}
-input,select,textarea{font-family:inherit;font-size:16px!important;} /* 16px prevents iOS zoom */
+html,body{height:100%;overscroll-behavior:none;}
+body{font-family:'Space Grotesk',sans-serif;font-size:14px;}
+input,select,textarea{font-family:inherit;font-size:16px!important;}
 button{-webkit-appearance:none;appearance:none;}
 ::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px;}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:2px;}
 
-/* Safe areas */
 :root{
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bot: env(safe-area-inset-bottom, 0px);
-  --safe-l:   env(safe-area-inset-left, 0px);
-  --safe-r:   env(safe-area-inset-right, 0px);
-  --nav-h: 64px;
-  --header-h: 52px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+  --safe-l:env(safe-area-inset-left,0px);
+  --safe-r:env(safe-area-inset-right,0px);
+  --nav-h:62px;
+  --header-h:52px;
 }
 
-/* Bottom nav safe area */
+/* ── Animations ── */
+@keyframes tabIn       { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+@keyframes tabInFast   { from{opacity:0;transform:translateY(8px)}  to{opacity:1;transform:translateY(0)} }
+@keyframes cardIn      { from{opacity:0;transform:translateY(18px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+@keyframes slideUp     { from{transform:translateY(100%);opacity:.5} to{transform:translateY(0);opacity:1} }
+@keyframes fadeIn      { from{opacity:0} to{opacity:1} }
+@keyframes popIn       { from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes spin        { to{transform:rotate(360deg)} }
+@keyframes pulse       { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes float       { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+@keyframes bounce      { 0%,100%{transform:scale(1)} 30%{transform:scale(1.25)} 60%{transform:scale(.92)} }
+@keyframes shimmer     { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes themeFlash  { 0%{opacity:0} 30%{opacity:.3} 100%{opacity:0} }
+@keyframes slideRight  { from{transform:translateX(-16px);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes checkDraw   { from{stroke-dashoffset:40} to{stroke-dashoffset:0} }
+
+.sheet-enter{animation:slideUp .3s cubic-bezier(.25,.72,.12,1) both;}
+.fade-enter{animation:fadeIn .18s ease both;}
+.pop-enter{animation:popIn .22s cubic-bezier(.3,.7,.2,1) both;}
+.tab-enter{animation:tabIn .25s cubic-bezier(.2,.8,.2,1) both;}
+.card-enter{animation:cardIn .3s cubic-bezier(.2,.8,.2,1) both;}
+.slide-right-enter{animation:slideRight .22s ease both;}
+.tap{transition:transform .1s,opacity .1s;}
+.tap:active{transform:scale(.95);opacity:.8;}
+.color-transition{transition:background .5s ease,border-color .4s ease,color .3s ease;}
+
 .bottom-nav{
-  padding-bottom: calc(var(--safe-bot) + 6px);
-  height: calc(var(--nav-h) + var(--safe-bot));
+  padding-bottom:calc(var(--safe-bot) + 4px);
+  height:calc(var(--nav-h) + var(--safe-bot));
 }
-
-/* Main scroll area */
 .main-scroll{
-  padding-top: var(--header-h);
-  padding-bottom: calc(var(--nav-h) + var(--safe-bot) + 16px);
-  min-height: 100vh;
+  padding-top:var(--header-h);
+  padding-bottom:calc(var(--nav-h) + var(--safe-bot) + 12px);
 }
 
-/* Bottom sheet animation */
-@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-@keyframes popIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+/* Theme card ring animation */
+.theme-selected{animation:bounce .35s ease;}
 
-.sheet-enter{animation:slideUp .28s cubic-bezier(.32,.72,0,1) forwards;}
-.fade-enter{animation:fadeIn .2s ease forwards;}
-.pop-enter{animation:popIn .2s cubic-bezier(.32,.72,0,1) forwards;}
+/* Skeleton shimmer */
+.skeleton{
+  background:linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s infinite;
+  border-radius:8px;
+}
 
-/* Touch feedback */
-.tap-highlight:active{opacity:.7;transform:scale(.97);}
-.tap-highlight{transition:opacity .1s,transform .1s;}
-
-/* Responsive breakpoint */
 @media(min-width:768px){
   .mobile-only{display:none!important;}
-  .desktop-only{display:flex!important;}
   .bottom-nav{display:none!important;}
   .main-scroll{padding-top:var(--header-h);padding-bottom:16px;}
-  .top-nav{display:flex!important;}
+  .top-tabs{display:flex!important;}
 }
 @media(max-width:767px){
   .desktop-only{display:none!important;}
-  .top-nav{display:none!important;}
+  .top-tabs{display:none!important;}
   .mobile-only{display:flex!important;}
 }
 </style>
@@ -81,11 +95,13 @@ const SUPABASE_URL = 'https://dehigkcuqoqigeikiijr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGlna2N1cW9xaWdlaWtpaWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDMzNDAsImV4cCI6MjA4OTQxOTM0MH0.qGxELDvYORIsKN-SBkhti_gauVivkXFvfiTWYXgzCTI';
 const IS_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
 const db = IS_CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-async function dbLoad(){if(!db)return null;try{const{data,error}=await db.from('app_state').select('key,value');if(error)throw error;return Object.fromEntries((data||[]).map(r=>[r.key,r.value]));}catch(e){return null;}}
-async function dbSave(key,value){if(!db)return;try{await db.from('app_state').upsert({key,value,updated_at:new Date().toISOString()});}catch(e){}}
+async function dbLoad(){if(!db)return null;try{const{data,error}=await db.from('app_state').select('key,value');if(error)throw error;return Object.fromEntries((data||[]).map(r=>[r.key,r.value]));}catch{return null;}}
+async function dbSave(key,value){if(!db)return;try{await db.from('app_state').upsert({key,value,updated_at:new Date().toISOString()});}catch{}}
 </script>
 <script type="text/babel">
 const {useState,useMemo,useEffect,useRef,useCallback}=React;
+
+/* ── Constants ── */
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const DAYS_SHORT=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const MEALS=['Desayuno','Almuerzo','Cena'];
@@ -97,16 +113,29 @@ const dKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${St
 const isToday=d=>d.toDateString()===new Date().toDateString();
 function weekDates(off=0){const now=new Date();const dow=now.getDay();const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1)+off*7);mon.setHours(0,0,0,0);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});}
 function calcN(ingrs,foods,qty=1){return ingrs.reduce((a,{foodId,amount})=>{const f=foods.find(x=>x.id===foodId);if(!f||!amount)return a;const r=(amount/f.serving)*qty;return{cal:a.cal+f.cal*r,prot:a.prot+f.prot*r,carbs:a.carbs+f.carbs*r,fat:a.fat+f.fat*r,fiber:a.fiber+f.fiber*r};},{cal:0,prot:0,carbs:0,fat:0,fiber:0});}
-function recipeWeight(recipe){return recipe.ingredients.reduce((s,{amount,unit})=>s+(['g','ml'].includes(unit)?amount:0),0);}
+function recipeWeight(r){return r.ingredients.reduce((s,{amount,unit})=>s+(['g','ml'].includes(unit)?amount:0),0);}
 function useIsMobile(){const[m,setM]=useState(window.innerWidth<768);useEffect(()=>{const h=()=>setM(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);return m;}
 
-const TH={
-  jeff:{id:'jeff',name:'Jeff',emoji:'🌑',font:"'Space Grotesk',sans-serif",bg:'#0d1117',surface:'#161b22',surface2:'#21262d',accent:'#58a6ff',accentDark:'#1f6feb',accentText:'#fff',text:'#e6edf3',text2:'#8b949e',text3:'#484f58',border:'#30363d',border2:'#484f58',primaryBg:'#238636',primaryColor:'#fff',navBg:'#161b22',
-    meal:{Desayuno:{bg:'#2d1f07',bc:'#d97706',tc:'#fcd34d'},Almuerzo:{bg:'#0d2818',bc:'#16a34a',tc:'#86efac'},Cena:{bg:'#0d1f4a',bc:'#3b82f6',tc:'#93c5fd'}}},
-  lia:{id:'lia',name:'Lia',emoji:'🌸',font:"'Nunito',sans-serif",bg:'#fff5f9',surface:'#ffffff',surface2:'#fce7f3',accent:'#e91e8c',accentDark:'#c2185b',accentText:'#fff',text:'#2d1028',text2:'#9d4e7a',text3:'#d4a0c0',border:'#f9c8df',border2:'#f48fbf',primaryBg:'#e91e8c',primaryColor:'#fff',navBg:'#fff',
-    meal:{Desayuno:{bg:'#fff0f9',bc:'#f472b6',tc:'#9d174d'},Almuerzo:{bg:'#faf0ff',bc:'#c084fc',tc:'#6b21a8'},Cena:{bg:'#fff1f2',bc:'#fb7185',tc:'#9f1239'}}},
+/* ── Emoji list ── */
+const EMOJIS=['🌑','🌸','🌊','🌿','🌅','💜','🍃','🍒','🏜️','⚡','❄️','✨','🦁','🐉','🦋','🌺','🔥','🎯','💎','🎸','🌙','☀️','🚀','🌈','🦄','🍕','🎮','💪','🌻','🐺','🐱','🐸','👑','🤖','🧠','🎨','🏔️','🌋','🦊','🐬'];
+
+/* ── Theme Catalog ── */
+const TC={
+  dark:{name:'Dark',preview:['#0d1117','#58a6ff','#238636'],font:"'Space Grotesk',sans-serif",bg:'#0d1117',surface:'#161b22',surface2:'#21262d',accent:'#58a6ff',accentDark:'#1f6feb',accentText:'#fff',text:'#e6edf3',text2:'#8b949e',text3:'#484f58',border:'#30363d',border2:'#484f58',primaryBg:'#238636',primaryColor:'#fff',meal:{Desayuno:{bg:'#2d1f07',bc:'#d97706',tc:'#fcd34d'},Almuerzo:{bg:'#0d2818',bc:'#16a34a',tc:'#86efac'},Cena:{bg:'#0d1f4a',bc:'#3b82f6',tc:'#93c5fd'}}},
+  pink:{name:'Rosa',preview:['#fff5f9','#e91e8c','#c2185b'],font:"'Nunito',sans-serif",bg:'#fff5f9',surface:'#ffffff',surface2:'#fce7f3',accent:'#e91e8c',accentDark:'#c2185b',accentText:'#fff',text:'#2d1028',text2:'#9d4e7a',text3:'#d4a0c0',border:'#f9c8df',border2:'#f48fbf',primaryBg:'#e91e8c',primaryColor:'#fff',meal:{Desayuno:{bg:'#fff0f9',bc:'#f472b6',tc:'#9d174d'},Almuerzo:{bg:'#faf0ff',bc:'#c084fc',tc:'#6b21a8'},Cena:{bg:'#fff1f2',bc:'#fb7185',tc:'#9f1239'}}},
+  ocean:{name:'Océano',preview:['#03080f','#00b4d8','#0077b6'],font:"'Space Grotesk',sans-serif",bg:'#03080f',surface:'#0c1929',surface2:'#122236',accent:'#00b4d8',accentDark:'#0077b6',accentText:'#fff',text:'#caf0f8',text2:'#7ec8d8',text3:'#3a7d8c',border:'#1a3a52',border2:'#1e4d6b',primaryBg:'#0077b6',primaryColor:'#fff',meal:{Desayuno:{bg:'#051a2e',bc:'#00b4d8',tc:'#90e0ef'},Almuerzo:{bg:'#0a2a1a',bc:'#06d6a0',tc:'#b7e4c7'},Cena:{bg:'#1a0a2e',bc:'#7b2fbe',tc:'#d4b8f0'}}},
+  forest:{name:'Bosque',preview:['#0a1a0f','#52b788','#40916c'],font:"'Space Grotesk',sans-serif",bg:'#0a1a0f',surface:'#122218',surface2:'#1a3322',accent:'#52b788',accentDark:'#40916c',accentText:'#fff',text:'#d8f3dc',text2:'#95d5b2',text3:'#52b788',border:'#1e4d30',border2:'#2d6a4f',primaryBg:'#52b788',primaryColor:'#081c10',meal:{Desayuno:{bg:'#1a2a0a',bc:'#95d5b2',tc:'#d8f3dc'},Almuerzo:{bg:'#0a1a14',bc:'#52b788',tc:'#b7e4c7'},Cena:{bg:'#1e1a0a',bc:'#d4a373',tc:'#fefae0'}}},
+  sunset:{name:'Atardecer',preview:['#0d0500','#ff6b35','#ffb347'],font:"'Nunito',sans-serif",bg:'#0d0500',surface:'#1f0d03',surface2:'#2e1806',accent:'#ff6b35',accentDark:'#e55a2b',accentText:'#fff',text:'#ffecd2',text2:'#ffb347',text3:'#7a3c00',border:'#4a1f0a',border2:'#6b3015',primaryBg:'#ff6b35',primaryColor:'#fff',meal:{Desayuno:{bg:'#2e1002',bc:'#ff9f1c',tc:'#ffbf69'},Almuerzo:{bg:'#1a0808',bc:'#e63946',tc:'#ffb3b3'},Cena:{bg:'#0f0818',bc:'#9b5de5',tc:'#e0b0ff'}}},
+  lavender:{name:'Lavanda',preview:['#f8f4ff','#7c3aed','#6d28d9'],font:"'Nunito',sans-serif",bg:'#f8f4ff',surface:'#ffffff',surface2:'#ede8ff',accent:'#7c3aed',accentDark:'#6d28d9',accentText:'#fff',text:'#1e0f4a',text2:'#7c6b9e',text3:'#c4b5d4',border:'#ddd6fe',border2:'#c4b5d4',primaryBg:'#7c3aed',primaryColor:'#fff',meal:{Desayuno:{bg:'#fdf0ff',bc:'#d946ef',tc:'#701a75'},Almuerzo:{bg:'#f0f4ff',bc:'#6366f1',tc:'#312e81'},Cena:{bg:'#fff0f6',bc:'#ec4899',tc:'#831843'}}},
+  mint:{name:'Menta',preview:['#f0fffe','#14b8a6','#0d9488'],font:"'Space Grotesk',sans-serif",bg:'#f0fffe',surface:'#ffffff',surface2:'#e0faf7',accent:'#14b8a6',accentDark:'#0d9488',accentText:'#fff',text:'#0f2623',text2:'#0d7a70',text3:'#a7d8d5',border:'#b2e8e3',border2:'#7ed8d1',primaryBg:'#14b8a6',primaryColor:'#fff',meal:{Desayuno:{bg:'#f0fff8',bc:'#10b981',tc:'#064e3b'},Almuerzo:{bg:'#f0fffe',bc:'#14b8a6',tc:'#0f2623'},Cena:{bg:'#f0f8ff',bc:'#3b82f6',tc:'#1e3a5f'}}},
+  cherry:{name:'Cereza',preview:['#0d0005','#ff2d55','#cc0033'],font:"'Space Grotesk',sans-serif",bg:'#0d0005',surface:'#1a000a',surface2:'#26000f',accent:'#ff2d55',accentDark:'#cc0033',accentText:'#fff',text:'#ffe0e8',text2:'#ff6b84',text3:'#660018',border:'#3d000f',border2:'#5c001a',primaryBg:'#ff2d55',primaryColor:'#fff',meal:{Desayuno:{bg:'#2a0010',bc:'#ff6b84',tc:'#ffe0e8'},Almuerzo:{bg:'#0a1a10',bc:'#34d399',tc:'#ecfdf5'},Cena:{bg:'#1a1028',bc:'#a78bfa',tc:'#ede9fe'}}},
+  sand:{name:'Arena',preview:['#fdf8f0','#c2803f','#a0622a'],font:"'Nunito',sans-serif",bg:'#fdf8f0',surface:'#fff9f2',surface2:'#f5ece0',accent:'#c2803f',accentDark:'#a0622a',accentText:'#fff',text:'#2d1f0e',text2:'#8a6240',text3:'#d4b896',border:'#e8d5bf',border2:'#d4b896',primaryBg:'#c2803f',primaryColor:'#fff',meal:{Desayuno:{bg:'#fff5e6',bc:'#f59e0b',tc:'#78350f'},Almuerzo:{bg:'#f5fff0',bc:'#65a30d',tc:'#1a2e05'},Cena:{bg:'#fff0f5',bc:'#e879a0',tc:'#500724'}}},
+  cyber:{name:'Cyber',preview:['#050505','#00ff88','#7b00ff'],font:"'Space Grotesk',sans-serif",bg:'#050505',surface:'#0d0d0d',surface2:'#141414',accent:'#00ff88',accentDark:'#00cc6a',accentText:'#000',text:'#e8e8e8',text2:'#888',text3:'#333',border:'#1e1e1e',border2:'#2a2a2a',primaryBg:'#00ff88',primaryColor:'#000',meal:{Desayuno:{bg:'#001a0d',bc:'#00ff88',tc:'#b3ffe0'},Almuerzo:{bg:'#0d0026',bc:'#7b00ff',tc:'#d4a0ff'},Cena:{bg:'#1a000d',bc:'#ff0066',tc:'#ffb3d4'}}},
+  nordic:{name:'Nordic',preview:['#eceff4','#5e81ac','#4c6994'],font:"'Space Grotesk',sans-serif",bg:'#eceff4',surface:'#ffffff',surface2:'#e5e9f0',accent:'#5e81ac',accentDark:'#4c6994',accentText:'#fff',text:'#2e3440',text2:'#4c566a',text3:'#b0b8c8',border:'#d8dee9',border2:'#c0c8d8',primaryBg:'#5e81ac',primaryColor:'#fff',meal:{Desayuno:{bg:'#ecf2fa',bc:'#5e81ac',tc:'#2e3440'},Almuerzo:{bg:'#ecfaf4',bc:'#a3be8c',tc:'#2e3440'},Cena:{bg:'#faecea',bc:'#bf616a',tc:'#2e3440'}}},
+  rosegold:{name:'Rose Gold',preview:['#fdf4f5','#c97b84','#b06070'],font:"'Nunito',sans-serif",bg:'#fdf4f5',surface:'#ffffff',surface2:'#fce8ea',accent:'#c97b84',accentDark:'#b06070',accentText:'#fff',text:'#3d1a1e',text2:'#9e6870',text3:'#d4a0a8',border:'#f0cdd0',border2:'#e8b0b8',primaryBg:'#c97b84',primaryColor:'#fff',meal:{Desayuno:{bg:'#fff0f2',bc:'#f4a0aa',tc:'#6b1a24'},Almuerzo:{bg:'#f5f0ff',bc:'#c4a0e8',tc:'#3d1860'},Cena:{bg:'#fff5f0',bc:'#f4b090',tc:'#6b2a10'}}},
 };
 
+/* ── Data ── */
 const FOODS0=[
   {id:'f1',name:'Avena',cal:389,prot:17,carbs:66,fat:7,fiber:11,serving:100,unit:'g'},
   {id:'f2',name:'Huevo',cal:78,prot:6,carbs:0.6,fat:5,fiber:0,serving:1,unit:'unidad'},
@@ -131,49 +160,48 @@ const RECIPES0=[
   {id:'r5',name:'Yogur con avena',servings:1,prepTime:5,mealType:'Desayuno',desc:'Rápido y proteico',ingredients:[{foodId:'f14',amount:150,unit:'g'},{foodId:'f1',amount:40,unit:'g'},{foodId:'f7',amount:1,unit:'unidad'}],instructions:'1. Mezclar yogur con avena.\n2. Reposar 5 min.\n3. Decorar con plátano.'},
 ];
 
-// ── Shared primitives ─────────────────────────────────────────────────────────
+/* ── Shared primitives ── */
 function NutrBar({n,servings=1,compact}){
   const items=[{l:'Kcal',v:r0(n.cal/servings),c:'#92400E',bg:'#FEF3C7'},{l:'Prot',v:r1(n.prot/servings)+'g',c:'#14532D',bg:'#DCFCE7'},{l:'Carbs',v:r1(n.carbs/servings)+'g',c:'#1E3A8A',bg:'#EFF6FF'},{l:'Grasa',v:r1(n.fat/servings)+'g',c:'#581C87',bg:'#F5F3FF'},{l:'Fibra',v:r1(n.fiber/servings)+'g',c:'#7C2D12',bg:'#FFF7ED'}];
-  return <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>{items.map(it=><div key={it.l} style={{textAlign:'center',padding:compact?'5px 2px':'8px 2px',borderRadius:8,background:it.bg}}><div style={{fontSize:compact?12:15,fontWeight:700,color:it.c}}>{it.v}</div><div style={{fontSize:10,color:it.c,opacity:.7,marginTop:1}}>{it.l}</div></div>)}</div>;
+  return <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>{items.map(it=><div key={it.l} style={{textAlign:'center',padding:compact?'5px 2px':'8px 2px',borderRadius:8,background:it.bg}}><div style={{fontSize:compact?12:15,fontWeight:700,color:it.c}}>{it.v}</div><div style={{fontSize:9,color:it.c,opacity:.7,marginTop:1}}>{it.l}</div></div>)}</div>;
 }
-function CloseBtn({onClick,T,size=40}){return <button onClick={onClick} style={{width:size,height:size,borderRadius:'50%',background:T?T.surface2:'#f5f5f0',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T?T.text2:'#666',flexShrink:0}}>
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-</button>;}
-function PrimaryBtn({children,onClick,T,disabled,style={},full}){return <button onClick={onClick} disabled={disabled} className="tap-highlight" style={{padding:'13px 20px',borderRadius:12,border:'none',background:T?T.primaryBg:'#1a3d0b',color:T?T.primaryColor:'#fff',cursor:disabled?'not-allowed':'pointer',fontSize:14,fontWeight:700,opacity:disabled?.45:1,width:full?'100%':undefined,display:'flex',alignItems:'center',justifyContent:'center',gap:6,...style}}>{children}</button>;}
-function GhostBtn({children,onClick,T,style={}}){return <button onClick={onClick} className="tap-highlight" style={{padding:'13px 20px',borderRadius:12,border:`1.5px solid ${T?T.border2:'#ccc'}`,background:'transparent',color:T?T.text:'#1a1a1a',cursor:'pointer',fontSize:14,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6,...style}}>{children}</button>;}
-function SmBtn({children,onClick,v='ghost',style={}}){
-  const s={primary:{background:'#1a3d0b',color:'#fff',border:'none'},danger:{background:'#fee2e2',color:'#991b1b',border:'1px solid #fecaca'},ghost:{background:'#f5f5f0',color:'#444',border:'1px solid #ddd'}};
-  return <button onClick={onClick} className="tap-highlight" style={{padding:'8px 12px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,display:'inline-flex',alignItems:'center',gap:4,...(s[v]||s.ghost),...style}}>{children}</button>;
-}
-
-function LF({t,children,T}){return <div style={{marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:T?T.text2:'#666',marginBottom:5,textTransform:'uppercase',letterSpacing:'.5px'}}>{t}</div>{children}</div>;}
-function Inp({T,style={},...p}){return <input {...p} style={{width:'100%',padding:'13px 14px',fontSize:16,border:`1.5px solid ${T?T.border2:'#ddd'}`,borderRadius:10,background:T?T.surface2:'#fff',color:T?T.text:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}/>;}
-function Sel({T,children,style={},...p}){return <select {...p} style={{width:'100%',padding:'13px 14px',fontSize:16,border:`1.5px solid ${T?T.border2:'#ddd'}`,borderRadius:10,background:T?T.surface2:'#fff',color:T?T.text:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}>{children}</select>;}
+function CloseBtn({onClick,T}){return <button onClick={onClick} className="tap" style={{width:40,height:40,borderRadius:'50%',background:T?T.surface2:'#f5f5f0',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T?T.text2:'#666',flexShrink:0}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>;}
+function PrimaryBtn({children,onClick,T,disabled,style={},full}){const bg=T?T.primaryBg:'#1a3d0b';const col=T?T.primaryColor:'#fff';return <button onClick={onClick} disabled={disabled} className="tap" style={{padding:'13px 20px',borderRadius:12,border:'none',background:bg,color:col,cursor:disabled?'not-allowed':'pointer',fontSize:14,fontWeight:700,opacity:disabled?.45:1,width:full?'100%':undefined,display:'flex',alignItems:'center',justifyContent:'center',gap:6,...style}}>{children}</button>;}
+function GhostBtn({children,onClick,T,style={}}){return <button onClick={onClick} className="tap" style={{padding:'13px 20px',borderRadius:12,border:`1.5px solid ${T?T.border2:'#ccc'}`,background:'transparent',color:T?T.text:'#1a1a1a',cursor:'pointer',fontSize:14,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6,...style}}>{children}</button>;}
+function SmBtn({children,onClick,v='ghost',style={}}){const s={primary:{background:'#1a3d0b',color:'#fff',border:'none'},danger:{background:'#fee2e2',color:'#991b1b',border:'1px solid #fecaca'},ghost:{background:'#f5f5f0',color:'#444',border:'1px solid #ddd'}};return <button onClick={onClick} className="tap" style={{padding:'8px 12px',borderRadius:8,cursor:'pointer',fontSize:12,fontWeight:600,display:'inline-flex',alignItems:'center',gap:4,...(s[v]||s.ghost),...style}}>{children}</button>;}
+function LFld({t,T,children}){return <div style={{marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:T?T.text2:'#666',marginBottom:5,textTransform:'uppercase',letterSpacing:'.5px'}}>{t}</div>{children}</div>;}
+function InpT({T,style={},...p}){return <input {...p} style={{width:'100%',padding:'13px 14px',fontSize:16,border:`1.5px solid ${T?T.border2:'#ddd'}`,borderRadius:10,background:T?T.surface2:'#fff',color:T?T.text:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}/>;}
+function SelT({T,children,style={},...p}){return <select {...p} style={{width:'100%',padding:'13px 14px',fontSize:16,border:`1.5px solid ${T?T.border2:'#ddd'}`,borderRadius:10,background:T?T.surface2:'#fff',color:T?T.text:'#1a1a1a',outline:'none',fontFamily:'inherit',...style}}>{children}</select>;}
 
 function slotLabel(entry,recipes,foods){
   if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);return f?`${f.name} (${entry.amount}${entry.unit})`:'?';}
   const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return '?';
   return entry.qty&&entry.qty!==1?`${rec.name} ×${r1(entry.qty)}`:rec.name;
 }
+function slotCal(entry,recipes,foods){
+  if(entry.type==='food'){const f=foods.find(x=>x.id===entry.foodId);if(!f)return 0;return r0(f.cal*(entry.amount/f.serving));}
+  const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return 0;return r0(calcN(rec.ingredients,foods,entry.qty||1).cal);
+}
 
-// ── Bottom Sheet wrapper ──────────────────────────────────────────────────────
-function Sheet({open,onClose,children,T,title,subtitle,maxH='90vh'}){
+/* ── Sheet ── */
+function Sheet({open,onClose,T,title,subtitle,children,maxH='92vh'}){
   const isMobile=useIsMobile();
   if(!open)return null;
   if(!isMobile)return(
-    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.45)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'52px 16px 16px',overflowY:'auto'}} className="fade-enter">
-      <div onClick={e=>e.stopPropagation()} style={{background:T?T.surface:'#fff',borderRadius:16,border:`1px solid ${T?T.border:'#e0e0e0'}`,boxShadow:'0 24px 64px rgba(0,0,0,.2)',width:'100%',maxWidth:500,maxHeight:'85vh',overflowY:'auto',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}} className="pop-enter">
+    <div onClick={onClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'52px 16px 16px',overflowY:'auto'}}>
+      <div onClick={e=>e.stopPropagation()} className="pop-enter" style={{background:T?T.surface:'#fff',borderRadius:16,border:`1px solid ${T?T.border:'#e0e0e0'}`,boxShadow:'0 24px 64px rgba(0,0,0,.22)',width:'100%',maxWidth:500,maxHeight:'85vh',overflowY:'auto',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}}>
+        {(title||subtitle||onClose)&&<div style={{padding:'18px 20px 14px',borderBottom:`1px solid ${T?T.border:'#e0e0e0'}`,display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,background:T?T.surface:'#fff'}}>
+          <div style={{flex:1}}><div style={{fontSize:16,fontWeight:700,color:T?T.text:'#1a1a1a'}}>{title}</div>{subtitle&&<div style={{fontSize:13,color:T?T.text2:'#666',marginTop:3}}>{subtitle}</div>}</div>
+          <CloseBtn onClick={onClose} T={T}/>
+        </div>}
         {children}
       </div>
     </div>
   );
   return(
-    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.5)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}} className="fade-enter">
-      <div onClick={e=>e.stopPropagation()} style={{background:T?T.surface:'#fff',borderRadius:'20px 20px 0 0',maxHeight:maxH,display:'flex',flexDirection:'column',paddingBottom:'calc(var(--safe-bot) + 8px)',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}} className="sheet-enter">
-        {/* Handle */}
-        <div style={{padding:'10px 0 6px',display:'flex',justifyContent:'center',flexShrink:0}}>
-          <div style={{width:40,height:4,borderRadius:2,background:T?T.border2:'#ddd'}}/>
-        </div>
+    <div onClick={onClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.55)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+      <div onClick={e=>e.stopPropagation()} className="sheet-enter" style={{background:T?T.surface:'#fff',borderRadius:'22px 22px 0 0',maxHeight:maxH,display:'flex',flexDirection:'column',paddingBottom:'calc(var(--safe-bot) + 8px)',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}}>
+        <div style={{padding:'10px 0 6px',display:'flex',justifyContent:'center',flexShrink:0}}><div style={{width:42,height:4,borderRadius:2,background:T?T.border2:'#ddd'}}/></div>
         {(title||subtitle)&&<div style={{padding:'4px 20px 14px',borderBottom:`1px solid ${T?T.border:'#f0f0f0'}`,flexShrink:0,display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
           <div><div style={{fontSize:17,fontWeight:700,color:T?T.text:'#1a1a1a'}}>{title}</div>{subtitle&&<div style={{fontSize:13,color:T?T.text2:'#666',marginTop:3}}>{subtitle}</div>}</div>
           <CloseBtn onClick={onClose} T={T}/>
@@ -184,38 +212,32 @@ function Sheet({open,onClose,children,T,title,subtitle,maxH='90vh'}){
   );
 }
 
-// ── QtyPicker ─────────────────────────────────────────────────────────────────
+/* ── QtyPicker ── */
 function QtyPicker({recipe,foods,T,onConfirm,onBack}){
-  const [mode,setMode]=useState('porciones');
-  const [qty,setQty]=useState(1);
-  const [exactAmt,setExactAmt]=useState('');
-  const [exactUnit,setExactUnit]=useState('g');
-  const rw=recipeWeight(recipe);
-  const clamp=v=>Math.max(0.5,Math.round(v*2)/2);
+  const [mode,setMode]=useState('porciones');const [qty,setQty]=useState(1);const [exactAmt,setExactAmt]=useState('');const [exactUnit,setExactUnit]=useState('g');
+  const rw=recipeWeight(recipe);const clamp=v=>Math.max(0.5,Math.round(v*2)/2);
   const effQty=mode==='porciones'?qty:(rw>0&&+exactAmt>0?(+exactAmt/rw)*recipe.servings:1);
   const baseN=calcN(recipe.ingredients,foods,1);
   const confirm=()=>{if(mode==='porciones')onConfirm(qty);else if(rw>0&&+exactAmt>0)onConfirm(r1((+exactAmt/rw)*recipe.servings));else onConfirm(1);};
   return <div style={{padding:'16px 20px 8px',background:T.surface}}>
     <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:2}}>{recipe.name}</div>
-    <div style={{fontSize:13,color:T.text2,marginBottom:16}}>Define la cantidad a registrar</div>
+    <div style={{fontSize:13,color:T.text2,marginBottom:16}}>Define la cantidad</div>
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:20}}>
-      {[['porciones','Por porciones'],['exacto','En g / ml']].map(([m,lbl])=><button key={m} onClick={()=>setMode(m)} style={{padding:'11px',borderRadius:10,border:`1.5px solid ${mode===m?T.accent:T.border}`,background:mode===m?T.accentDark:T.surface2,color:mode===m?T.accentText:T.text2,cursor:'pointer',fontSize:13,fontWeight:700}}>{lbl}</button>)}
+      {[['porciones','Por porciones'],['exacto','En g / ml']].map(([m,lbl])=><button key={m} onClick={()=>setMode(m)} className="tap" style={{padding:'11px',borderRadius:10,border:`1.5px solid ${mode===m?T.accent:T.border}`,background:mode===m?T.accentDark:T.surface2,color:mode===m?T.accentText:T.text2,cursor:'pointer',fontSize:13,fontWeight:700}}>{lbl}</button>)}
     </div>
     {mode==='porciones'?<div style={{marginBottom:20}}>
-      <div style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:14}}>Porciones — base: {recipe.servings}</div>
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:14}}>Porciones — base: {recipe.servings}</div>
       <div style={{display:'flex',alignItems:'center',gap:16}}>
-        <button onClick={()=>setQty(q=>clamp(q-.5))} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
-        <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:40,fontWeight:800,color:T.accent,lineHeight:1}}>{qty}</div><div style={{fontSize:13,color:T.text2,marginTop:4}}>porción{qty!==1?'es':''}</div></div>
-        <button onClick={()=>setQty(q=>q+.5)} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
+        <button onClick={()=>setQty(q=>clamp(q-.5))} className="tap" style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+        <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:42,fontWeight:800,color:T.accent,lineHeight:1}}>{qty}</div><div style={{fontSize:13,color:T.text2,marginTop:4}}>porción{qty!==1?'es':''}</div></div>
+        <button onClick={()=>setQty(q=>q+.5)} className="tap" style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
       </div>
     </div>:<div style={{marginBottom:20}}>
       {rw===0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:8,padding:'10px 12px',marginBottom:12,fontSize:13,color:'#92400E'}}>⚠ Sin ingredientes en g/ml. Usa porciones.</div>}
-      <div style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Peso total receta: {rw>0?rw+' g/ml':'no disponible'}</div>
+      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Peso total receta: {rw>0?rw+' g/ml':'no disponible'}</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 90px',gap:10,marginBottom:10}}>
         <input type="number" inputMode="decimal" min="0" value={exactAmt} onChange={e=>setExactAmt(e.target.value)} placeholder={rw>0?String(r0(rw/recipe.servings)):'0'} style={{padding:'14px',fontSize:20,fontWeight:700,border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
-        <select value={exactUnit} onChange={e=>setExactUnit(e.target.value)} style={{padding:'14px',fontSize:16,border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}>
-          <option value="g">g</option><option value="ml">ml</option>
-        </select>
+        <select value={exactUnit} onChange={e=>setExactUnit(e.target.value)} style={{padding:'14px',fontSize:16,border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}><option value="g">g</option><option value="ml">ml</option></select>
       </div>
       {+exactAmt>0&&rw>0&&<div style={{fontSize:13,color:T.text2}}>≈ {r1((+exactAmt/rw)*recipe.servings)} porciones</div>}
     </div>}
@@ -230,26 +252,23 @@ function QtyPicker({recipe,foods,T,onConfirm,onBack}){
   </div>;
 }
 
-// ── FoodAmountPicker ──────────────────────────────────────────────────────────
+/* ── FoodAmountPicker ── */
 function FoodAmountPicker({food,T,onConfirm,onBack}){
   const [amount,setAmount]=useState(food.serving);
   const n=useMemo(()=>{if(!amount)return{cal:0,prot:0,carbs:0,fat:0,fiber:0};const r=amount/food.serving;return{cal:food.cal*r,prot:food.prot*r,carbs:food.carbs*r,fat:food.fat*r,fiber:food.fiber*r};},[amount,food]);
   return <div style={{padding:'16px 20px 8px',background:T.surface}}>
     <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:2}}>{food.name}</div>
     <div style={{fontSize:13,color:T.text2,marginBottom:20}}>¿Cuánto vas a consumir?</div>
-    <div style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:14}}>Cantidad ({food.unit})</div>
+    <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:14}}>Cantidad ({food.unit})</div>
     <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:20}}>
-      <button onClick={()=>setAmount(a=>Math.max(0,a-food.serving))} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+      <button onClick={()=>setAmount(a=>Math.max(0,a-food.serving))} className="tap" style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
       <div style={{flex:1,position:'relative'}}>
-        <input type="number" inputMode="decimal" min="0" value={amount} onChange={e=>setAmount(+e.target.value||0)} style={{width:'100%',padding:'14px 50px 14px 16px',fontSize:20,fontWeight:700,textAlign:'center',border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
+        <input type="number" inputMode="decimal" min="0" value={amount} onChange={e=>setAmount(+e.target.value||0)} style={{width:'100%',padding:'14px 48px 14px 16px',fontSize:20,fontWeight:700,textAlign:'center',border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}}/>
         <span style={{position:'absolute',right:14,top:'50%',transform:'translateY(-50%)',fontSize:13,color:T.text2,pointerEvents:'none'}}>{food.unit}</span>
       </div>
-      <button onClick={()=>setAmount(a=>a+food.serving)} style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
+      <button onClick={()=>setAmount(a=>a+food.serving)} className="tap" style={{width:52,height:52,borderRadius:14,border:`1.5px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:24,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
     </div>
-    {amount>0&&<div style={{background:T.surface2,borderRadius:12,padding:'12px',marginBottom:16,border:`1px solid ${T.border}`}}>
-      <div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8}}>Nutrición</div>
-      <NutrBar n={n} compact/>
-    </div>}
+    {amount>0&&<div style={{background:T.surface2,borderRadius:12,padding:'12px',marginBottom:16,border:`1px solid ${T.border}`}}><div style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:8}}>Nutrición</div><NutrBar n={n} compact/></div>}
     <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:10,paddingBottom:8}}>
       <GhostBtn onClick={onBack} T={T}>← Volver</GhostBtn>
       <PrimaryBtn onClick={()=>amount>0&&onConfirm({foodId:food.id,amount,unit:food.unit})} T={T} disabled={!amount}>Confirmar</PrimaryBtn>
@@ -257,25 +276,20 @@ function FoodAmountPicker({food,T,onConfirm,onBack}){
   </div>;
 }
 
-// ── AddSlot Sheet ─────────────────────────────────────────────────────────────
+/* ── AddSlot Sheet ── */
 function AddSlotSheet({date,meal,recipes,foods,pantry,addToSlot,T,close}){
   const [listTab,setListTab]=useState('recetas');const [q,setQ]=useState('');const [selRec,setSelRec]=useState(null);const [selFood,setSelFood]=useState(null);
-  const mc=T.meal[meal];
+  const mc=T.meal[meal];const fmt=d=>d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
   const getMissR=rec=>rec.ingredients.filter(({foodId,amount})=>(pantry.find(p=>p.foodId===foodId)?.amount||0)<amount).length;
   const recList=recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase()));
   const foodList=foods.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
-  const slotKey=`${dKey(date)}_${meal}`;
-  const step=selRec?'qtyR':selFood?'qtyF':'list';
-  const fmt=d=>d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
-  return <Sheet open onClose={close} T={T}
-    title={step==='list'?'Añadir al planificador':'Cantidad'}
-    subtitle={step==='list'?<span><span style={{background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:700}}>{MEAL_ICONS[meal]} {meal}</span> · {fmt(date)}</span>:undefined}
-    maxH="92vh">
+  const slotKey=`${dKey(date)}_${meal}`;const step=selRec?'qtyR':selFood?'qtyF':'list';
+  return <Sheet open onClose={close} T={T} title={step==='list'?'Añadir al planificador':'Cantidad'} subtitle={step==='list'?<span><span style={{background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:700}}>{MEAL_ICONS[meal]} {meal}</span> · {fmt(date)}</span>:undefined} maxH="94vh">
     {step==='qtyR'&&<QtyPicker recipe={selRec} foods={foods} T={T} onConfirm={qty=>{addToSlot(slotKey,{type:'recipe',rId:selRec.id,qty});close();}} onBack={()=>setSelRec(null)}/>}
     {step==='qtyF'&&<FoodAmountPicker food={selFood} T={T} onConfirm={e=>{addToSlot(slotKey,{type:'food',...e});close();}} onBack={()=>setSelFood(null)}/>}
     {step==='list'&&<div>
-      <div style={{display:'flex',borderBottom:`1px solid ${T.border}`,paddingLeft:4}}>
-        {[['recetas','📖 Recetas'],['alimentos','🥦 Alimentos']].map(([id,lbl])=><button key={id} onClick={()=>{setListTab(id);setQ('');}} style={{flex:1,padding:'14px 8px',border:'none',borderBottom:listTab===id?`2.5px solid ${T.accent}`:'2.5px solid transparent',background:'none',cursor:'pointer',fontSize:13,fontWeight:700,color:listTab===id?T.accent:T.text2}}>{lbl}</button>)}
+      <div style={{display:'flex',borderBottom:`1px solid ${T.border}`}}>
+        {[['recetas','📖 Recetas'],['alimentos','🥦 Alimentos']].map(([id,lbl])=><button key={id} onClick={()=>{setListTab(id);setQ('');}} style={{flex:1,padding:'14px',border:'none',borderBottom:listTab===id?`2.5px solid ${T.accent}`:'2.5px solid transparent',background:'none',cursor:'pointer',fontSize:13,fontWeight:700,color:listTab===id?T.accent:T.text2}}>{lbl}</button>)}
       </div>
       <div style={{padding:'14px 16px 0'}}>
         <div style={{position:'relative',marginBottom:12}}>
@@ -283,219 +297,157 @@ function AddSlotSheet({date,meal,recipes,foods,pantry,addToSlot,T,close}){
           <input autoFocus style={{width:'100%',padding:'12px 12px 12px 40px',fontSize:15,border:`1.5px solid ${T.border2}`,borderRadius:12,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}} placeholder={`Buscar ${listTab}...`} value={q} onChange={e=>setQ(e.target.value)}/>
         </div>
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
-          {listTab==='recetas'&&recList.map(rec=>{const n=calcN(rec.ingredients,foods);const miss=getMissR(rec);const rmc=T.meal[rec.mealType]||T.meal.Almuerzo;
-            return<button key={rec.id} onClick={()=>setSelRec(rec)} className="tap-highlight" style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,cursor:'pointer',textAlign:'left',width:'100%'}}>
-              <div style={{flex:1}}>
-                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
-                  <span style={{fontSize:14,fontWeight:700,color:T.text}}>{rec.name}</span>
-                  <span style={{fontSize:10,background:rmc.bg,color:rmc.tc,padding:'2px 6px',borderRadius:6,border:`1px solid ${rmc.bc}`,fontWeight:700,flexShrink:0}}>{rec.mealType}</span>
-                </div>
-                <div style={{fontSize:12,color:T.text2}}>{r0(n.cal/rec.servings)} kcal · {r1(n.prot/rec.servings)}g prot · {rec.prepTime}min</div>
-              </div>
+          {listTab==='recetas'&&recList.map((rec,i)=>{const n=calcN(rec.ingredients,foods);const miss=getMissR(rec);const rmc=T.meal[rec.mealType]||T.meal.Almuerzo;
+            return<button key={rec.id} onClick={()=>setSelRec(rec)} className="tap card-enter" style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,cursor:'pointer',textAlign:'left',width:'100%',animationDelay:`${Math.min(i,6)*.04}s`}}>
+              <div style={{flex:1}}><div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}><span style={{fontSize:14,fontWeight:700,color:T.text}}>{rec.name}</span><span style={{fontSize:10,background:rmc.bg,color:rmc.tc,padding:'2px 6px',borderRadius:6,border:`1px solid ${rmc.bc}`,fontWeight:700,flexShrink:0}}>{rec.mealType}</span></div><div style={{fontSize:12,color:T.text2}}>{r0(n.cal/rec.servings)} kcal · {r1(n.prot/rec.servings)}g prot</div></div>
               {miss>0&&<span style={{fontSize:10,background:'#FEF3C7',color:'#92400E',padding:'3px 7px',borderRadius:8,border:'1px solid #F59E0B',flexShrink:0}}>⚠ {miss}</span>}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
             </button>;})}
-          {listTab==='alimentos'&&foodList.map(food=><button key={food.id} onClick={()=>setSelFood(food)} className="tap-highlight" style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,cursor:'pointer',textAlign:'left',width:'100%'}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:3}}>{food.name}</div>
-              <div style={{fontSize:12,color:T.text2}}>{food.serving}{food.unit} · {food.cal} kcal · {food.prot}g prot</div>
-            </div>
+          {listTab==='alimentos'&&foodList.map((food,i)=><button key={food.id} onClick={()=>setSelFood(food)} className="tap card-enter" style={{display:'flex',alignItems:'center',gap:12,padding:'14px',borderRadius:12,border:`1.5px solid ${T.border}`,background:T.surface,cursor:'pointer',textAlign:'left',width:'100%',animationDelay:`${Math.min(i,6)*.04}s`}}>
+            <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:3}}>{food.name}</div><div style={{fontSize:12,color:T.text2}}>{food.serving}{food.unit} · {food.cal} kcal</div></div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.text3} strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
           </button>)}
           {((listTab==='recetas'&&recList.length===0)||(listTab==='alimentos'&&foodList.length===0))&&<div style={{textAlign:'center',padding:'30px 20px',color:T.text2,fontSize:14}}>Sin resultados.</div>}
-          <div style={{height:8}}/>
+          <div style={{height:10}}/>
         </div>
       </div>
     </div>}
   </Sheet>;
 }
 
-// ── PlanRecipeSheet ───────────────────────────────────────────────────────────
+/* ── PlanRecipe Sheet ── */
 function PlanRecipeSheet({recipe,dates,addToSlot,foods,T,close}){
   const [selD,setSelD]=useState(null);const [selM,setSelM]=useState('');const [step,setStep]=useState(1);
   return <Sheet open onClose={close} T={T} title={step===1?'Planificar receta':'Cantidad'} subtitle={step===1?recipe.name:undefined} maxH="92vh">
     {step===1?<div style={{padding:'16px 20px 8px'}}>
-      <LF t="Día" T={T}>
+      <LFld t="Día" T={T}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
-          {dates.map((d,i)=>{const sel=selD&&dKey(selD)===dKey(d);const today=isToday(d);return<button key={i} onClick={()=>setSelD(d)} className="tap-highlight" style={{padding:'8px 2px',borderRadius:10,border:`1.5px solid ${sel?T.accent:today?T.accent:T.border}`,background:sel?T.accentDark:today?T.surface2:T.surface2,color:sel?T.accentText:T.text,cursor:'pointer',textAlign:'center'}}>
+          {dates.map((d,i)=>{const sel=selD&&dKey(selD)===dKey(d);const tod=isToday(d);return<button key={i} onClick={()=>setSelD(d)} className="tap" style={{padding:'8px 2px',borderRadius:10,border:`1.5px solid ${sel?T.accent:tod?T.accent:T.border}`,background:sel?T.accentDark:T.surface2,color:sel?T.accentText:T.text,cursor:'pointer',textAlign:'center'}}>
             <div style={{fontSize:9,color:sel?T.accentText:T.text2,marginBottom:2}}>{DAYS_SHORT[i]}</div>
             <div style={{fontSize:14,fontWeight:700}}>{d.getDate()}</div>
-            {today&&!sel&&<div style={{width:4,height:4,borderRadius:'50%',background:T.accent,margin:'2px auto 0'}}/>}
+            {tod&&!sel&&<div style={{width:4,height:4,borderRadius:'50%',background:T.accent,margin:'2px auto 0'}}/>}
           </button>;})}
         </div>
-      </LF>
-      <LF t="Comida" T={T}>
+      </LFld>
+      <LFld t="Comida" T={T}>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {MEALS.map(m=>{const mc=T.meal[m];const act=selM===m;return<button key={m} onClick={()=>setSelM(m)} className="tap-highlight" style={{padding:'14px 16px',borderRadius:12,border:`1.5px solid ${act?mc.bc:T.border}`,background:act?mc.bg:T.surface2,color:act?mc.tc:T.text,cursor:'pointer',fontSize:14,fontWeight:act?700:500,display:'flex',alignItems:'center',gap:10,textAlign:'left'}}>
+          {MEALS.map(m=>{const mc=T.meal[m];const act=selM===m;return<button key={m} onClick={()=>setSelM(m)} className="tap" style={{padding:'14px 16px',borderRadius:12,border:`1.5px solid ${act?mc.bc:T.border}`,background:act?mc.bg:T.surface2,color:act?mc.tc:T.text,cursor:'pointer',fontSize:14,fontWeight:act?700:500,display:'flex',alignItems:'center',gap:10}}>
             <span style={{fontSize:18}}>{MEAL_ICONS[m]}</span>{m}
             {act&&<svg style={{marginLeft:'auto'}} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>}
           </button>;})}
         </div>
-      </LF>
-      <PrimaryBtn onClick={()=>setStep(2)} T={T} disabled={!selD||!selM} full style={{marginTop:8,marginBottom:8}}>Siguiente →</PrimaryBtn>
+      </LFld>
+      <PrimaryBtn onClick={()=>setStep(2)} T={T} disabled={!selD||!selM} full style={{marginBottom:8}}>Siguiente →</PrimaryBtn>
     </div>:<QtyPicker recipe={recipe} foods={foods} T={T} onConfirm={qty=>{addToSlot(`${dKey(selD)}_${selM}`,{type:'recipe',rId:recipe.id,qty});close();}} onBack={()=>setStep(1)}/>}
   </Sheet>;
 }
 
-// ── Detail Sheet ──────────────────────────────────────────────────────────────
+/* ── Detail Sheet ── */
 function DetailSheet({recipe,foods,pantry,T,close,setModal}){
   const FALLBACK={Desayuno:{bg:'#FFFBEB',bc:'#F59E0B',tc:'#78350F'},Almuerzo:{bg:'#F0FDF4',bc:'#22C55E',tc:'#14532D'},Cena:{bg:'#EFF6FF',bc:'#3B82F6',tc:'#1E3A8A'}};
-  const mc=(T?T.meal:FALLBACK)[recipe.mealType]||FALLBACK.Almuerzo;
-  const n=calcN(recipe.ingredients,foods);
+  const mc=(T?T.meal:FALLBACK)[recipe.mealType]||FALLBACK.Almuerzo;const n=calcN(recipe.ingredients,foods);
   const ts=T||{surface:'#fff',text:'#1a1a1a',text2:'#666',border:'#e0e0e0',surface2:'#f5f5f0'};
   const missing=recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const have=pantry.find(p=>p.foodId===foodId)?.amount||0;if(have<amount)return{f,needed:amount,have,unit};return null;}).filter(Boolean);
   return <Sheet open onClose={close} T={T} maxH="95vh">
     <div style={{padding:'8px 20px 16px',background:ts.surface}}>
-      <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:10}}>{MEAL_ICONS[recipe.mealType]} {recipe.mealType}</span>
+      <span className="slide-right-enter" style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:10}}>{MEAL_ICONS[recipe.mealType]} {recipe.mealType}</span>
       <div style={{fontSize:20,fontWeight:800,color:ts.text,lineHeight:1.2,marginBottom:4}}>{recipe.name}</div>
       <div style={{fontSize:14,color:ts.text2,marginBottom:16}}>{recipe.desc}</div>
       <div style={{display:'flex',gap:16,marginBottom:20}}>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:ts.text2}}><span>⏱</span><span>{recipe.prepTime} min</span></div>
-        <div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,color:ts.text2}}><span>👥</span><span>{recipe.servings} porción{recipe.servings>1?'es':''}</span></div>
+        <div style={{fontSize:13,color:ts.text2}}>⏱ {recipe.prepTime} min</div>
+        <div style={{fontSize:13,color:ts.text2}}>👥 {recipe.servings} porción{recipe.servings>1?'es':''}</div>
       </div>
-      {missing.length>0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:10,padding:'12px 14px',marginBottom:16,fontSize:13,color:'#92400E'}}>
-        <div style={{fontWeight:700,marginBottom:4}}>⚠ Faltantes en alacena:</div>
-        {missing.map(({f,needed,have,unit})=><div key={f.id} style={{marginTop:2}}>• {f.name}: necesitas {needed}{unit}, tienes {have}</div>)}
-      </div>}
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Nutrición por porción</div>
-        <NutrBar n={n} servings={recipe.servings}/>
+      {missing.length>0&&<div style={{background:'#FEF3C7',border:'1px solid #F59E0B',borderRadius:10,padding:'12px 14px',marginBottom:16,fontSize:13,color:'#92400E'}}><div style={{fontWeight:700,marginBottom:4}}>⚠ Faltantes:</div>{missing.map(({f,needed,have,unit})=><div key={f.id} style={{marginTop:2}}>• {f.name}: necesitas {needed}{unit}, tienes {have}</div>)}</div>}
+      <div style={{marginBottom:16}}><div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Nutrición por porción</div><NutrBar n={n} servings={recipe.servings}/></div>
+      <div style={{marginBottom:16}}><div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Ingredientes</div>
+        {recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const ok=(pantry.find(p=>p.foodId===foodId)?.amount||0)>=amount;return f?<div key={foodId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${ts.border}`}}><span style={{fontSize:14,color:ts.text}}>{f.name}</span><div style={{display:'flex',gap:8,alignItems:'center'}}><span style={{fontSize:13,color:ts.text2}}>{amount} {unit}</span><span style={{fontSize:11,background:ok?'#DCFCE7':'#FEF3C7',color:ok?'#14532D':'#92400E',padding:'2px 8px',borderRadius:8,fontWeight:700}}>{ok?'✓':'⚠'}</span></div></div>:null;})}
       </div>
-      <div style={{marginBottom:16}}>
-        <div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Ingredientes</div>
-        {recipe.ingredients.map(({foodId,amount,unit})=>{const f=foods.find(x=>x.id===foodId);const ok=(pantry.find(p=>p.foodId===foodId)?.amount||0)>=amount;return f?<div key={foodId} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:`1px solid ${ts.border}`}}>
-          <span style={{fontSize:14,color:ts.text}}>{f.name}</span>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <span style={{fontSize:13,color:ts.text2}}>{amount} {unit}</span>
-            <span style={{fontSize:11,background:ok?'#DCFCE7':'#FEF3C7',color:ok?'#14532D':'#92400E',padding:'2px 8px',borderRadius:8,fontWeight:700}}>{ok?'✓':'⚠'}</span>
-          </div>
-        </div>:null;})}
-      </div>
-      {recipe.instructions&&<div style={{marginBottom:20}}>
-        <div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Preparación</div>
-        <div style={{fontSize:14,lineHeight:1.8,whiteSpace:'pre-line',color:ts.text}}>{recipe.instructions}</div>
-      </div>}
+      {recipe.instructions&&<div style={{marginBottom:20}}><div style={{fontSize:11,fontWeight:700,color:ts.text2,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Preparación</div><div style={{fontSize:14,lineHeight:1.8,whiteSpace:'pre-line',color:ts.text}}>{recipe.instructions}</div></div>}
       {T&&<PrimaryBtn onClick={()=>{close();setModal({type:'planRecipe',recipe});}} T={T} full>+ Añadir al planificador</PrimaryBtn>}
       <div style={{height:8}}/>
     </div>
   </Sheet>;
 }
 
-// ── Mobile Planner Tab ────────────────────────────────────────────────────────
+/* ── Mobile Planner ── */
 function MobilePlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
-  const today=new Date();const todayIdx=Math.max(0,dates.findIndex(d=>d.toDateString()===today.toDateString()));
+  const todayIdx=Math.max(0,dates.findIndex(d=>isToday(d)));
   const [dayIdx,setDayIdx]=useState(todayIdx>=0?todayIdx:0);
-  const date=dates[dayIdx];
-  const fmt=d=>d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
-
-  // Swipe gesture
+  const date=dates[dayIdx];const fmt=d=>d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'});
   const touchStart=useRef(null);
-  const onTouchStart=e=>touchStart.current=e.touches[0].clientX;
-  const onTouchEnd=e=>{
-    if(touchStart.current===null)return;
-    const dx=e.changedTouches[0].clientX-touchStart.current;
-    if(Math.abs(dx)>50){if(dx<0)setDayIdx(i=>Math.min(6,i+1));else setDayIdx(i=>Math.max(0,i-1));}
-    touchStart.current=null;
-  };
-
+  const onTS=e=>touchStart.current=e.touches[0].clientX;
+  const onTE=e=>{if(touchStart.current===null)return;const dx=e.changedTouches[0].clientX-touchStart.current;if(Math.abs(dx)>48){if(dx<0)setDayIdx(i=>Math.min(6,i+1));else setDayIdx(i=>Math.max(0,i-1));}touchStart.current=null;};
   return <div style={{background:T.bg,minHeight:'100%',fontFamily:T.font}}>
-    {/* Week strip */}
-    <div style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'12px 16px 10px',position:'sticky',top:52,zIndex:10}}>
+    <div className="color-transition" style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'12px 16px 10px',position:'sticky',top:52,zIndex:10}}>
       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-        <button onClick={()=>{setWeekOff(w=>w-1);setDayIdx(0);}} style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg>
-        </button>
-        <span style={{flex:1,textAlign:'center',fontSize:13,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':weekOff>0?`+${weekOff} semana`:weekOff+' semana'}</span>
-        <button onClick={()=>{setWeekOff(w=>w+1);setDayIdx(0);}} style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
-        </button>
-        {weekOff!==0&&<button onClick={()=>{setWeekOff(0);setDayIdx(todayIdx>=0?todayIdx:0);}} style={{height:36,padding:'0 12px',borderRadius:10,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:12,fontWeight:700}}>Hoy</button>}
+        <button onClick={()=>{setWeekOff(w=>w-1);setDayIdx(0);}} className="tap" style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg></button>
+        <span style={{flex:1,textAlign:'center',fontSize:13,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':weekOff>0?`+${weekOff} sem`:`${weekOff} sem`}</span>
+        <button onClick={()=>{setWeekOff(w=>w+1);setDayIdx(0);}} className="tap" style={{width:36,height:36,borderRadius:10,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg></button>
+        {weekOff!==0&&<button onClick={()=>{setWeekOff(0);setDayIdx(todayIdx>=0?todayIdx:0);}} className="tap" style={{height:36,padding:'0 12px',borderRadius:10,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:12,fontWeight:700}}>Hoy</button>}
       </div>
-      {/* Day pills */}
       <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:2}}>
-        {dates.map((d,i)=>{const active=i===dayIdx;const tod=isToday(d);const key=`${dKey(d)}_`;const hasAny=MEALS.some(m=>(planner[key+m]||[]).length>0);
-          return<button key={i} onClick={()=>setDayIdx(i)} className="tap-highlight" style={{flexShrink:0,width:42,padding:'7px 0',borderRadius:12,border:`1.5px solid ${active?T.accent:tod?T.border2:T.border}`,background:active?T.accentDark:T.surface2,color:active?T.accentText:T.text,cursor:'pointer',textAlign:'center',position:'relative'}}>
+        {dates.map((d,i)=>{const active=i===dayIdx;const tod=isToday(d);const hasAny=MEALS.some(m=>(planner[`${dKey(d)}_${m}`]||[]).length>0);
+          return<button key={i} onClick={()=>setDayIdx(i)} className="tap" style={{flexShrink:0,width:44,padding:'7px 0',borderRadius:12,border:`1.5px solid ${active?T.accent:tod?T.border2:T.border}`,background:active?T.accentDark:T.surface2,color:active?T.accentText:T.text,cursor:'pointer',textAlign:'center',position:'relative',transition:'background .25s,border-color .25s'}}>
             <div style={{fontSize:9,color:active?T.accentText:T.text2,marginBottom:2}}>{DAYS_SHORT[i]}</div>
             <div style={{fontSize:15,fontWeight:700}}>{d.getDate()}</div>
             {hasAny&&<div style={{width:5,height:5,borderRadius:'50%',background:active?T.accentText:T.accent,margin:'2px auto 0'}}/>}
           </button>;})}
       </div>
     </div>
-
-    {/* Day view with swipe */}
-    <div style={{padding:'0 0 8px'}} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div onTouchStart={onTS} onTouchEnd={onTE} style={{padding:'0 0 8px'}}>
       <div style={{padding:'14px 16px 6px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{fontSize:16,fontWeight:700,color:T.text,textTransform:'capitalize'}}>{fmt(date)}</div>
-        {isToday(date)&&<span style={{fontSize:11,fontWeight:700,background:T.accentDark,color:T.accentText,padding:'3px 10px',borderRadius:8}}>Hoy</span>}
+        {isToday(date)&&<span className="slide-right-enter" style={{fontSize:11,fontWeight:700,background:T.accentDark,color:T.accentText,padding:'3px 10px',borderRadius:8}}>Hoy</span>}
       </div>
-
-      {MEALS.map(meal=>{
-        const mc=T.meal[meal];const key=`${dKey(date)}_${meal}`;const slot=planner[key]||[];
-        return<div key={meal} style={{margin:'8px 16px',borderRadius:16,border:`1.5px solid ${T.border}`,overflow:'hidden',background:T.surface}}>
-          {/* Meal header */}
+      {MEALS.map((meal,mi)=>{const mc=T.meal[meal];const key=`${dKey(date)}_${meal}`;const slot=planner[key]||[];
+        return<div key={meal} className="card-enter" style={{margin:'8px 16px',borderRadius:16,border:`1.5px solid ${T.border}`,overflow:'hidden',background:T.surface,animationDelay:`${mi*.07}s`}}>
           <div style={{padding:'12px 16px',background:mc.bg,borderBottom:`1px solid ${mc.bc}33`,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
             <div style={{display:'flex',alignItems:'center',gap:8}}>
               <span style={{fontSize:18}}>{MEAL_ICONS[meal]}</span>
-              <div>
-                <div style={{fontSize:14,fontWeight:700,color:mc.tc}}>{meal}</div>
-                {slot.length>0&&<div style={{fontSize:11,color:mc.tc,opacity:.8}}>{slot.length} ítem{slot.length>1?'s':''}</div>}
-              </div>
+              <div><div style={{fontSize:14,fontWeight:700,color:mc.tc}}>{meal}</div>{slot.length>0&&<div style={{fontSize:11,color:mc.tc,opacity:.8}}>{slot.length} ítem{slot.length>1?'s':''}</div>}</div>
             </div>
-            <button onClick={()=>setModal({type:'addSlot',date,meal})} className="tap-highlight" style={{width:36,height:36,borderRadius:10,background:mc.bc+'33',border:`1px solid ${mc.bc}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:mc.tc}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            </button>
+            <button onClick={()=>setModal({type:'addSlot',date,meal})} className="tap" style={{width:36,height:36,borderRadius:10,background:mc.bc+'33',border:`1px solid ${mc.bc}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:mc.tc}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
           </div>
-          {/* Slot entries */}
-          {slot.length===0?<div style={{padding:'20px 16px',textAlign:'center',color:T.text3,fontSize:13}}>Toca + para añadir</div>:
+          {slot.length===0?<div style={{padding:'18px 16px',textAlign:'center',color:T.text3,fontSize:13}}>Toca + para añadir</div>:
           <div style={{padding:'8px'}}>
-            {slot.map((entry,ri)=>{
-              const label=slotLabel(entry,recipes,foods);const clickable=entry.type==='recipe';
-              const entryN=entry.type==='food'?
-                (()=>{const f=foods.find(x=>x.id===entry.foodId);if(!f)return null;const r=entry.amount/f.serving;return{cal:r0(f.cal*r)}; })():
-                (()=>{const rec=recipes.find(r=>r.id===entry.rId);if(!rec)return null;return{cal:r0(calcN(rec.ingredients,foods,entry.qty||1).cal)};})();
-              return<div key={ri} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:T.surface2,border:`1px solid ${T.border}`,marginBottom:6}}>
-                <div style={{flex:1,cursor:clickable?'pointer':'default'}} onClick={()=>{if(clickable){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}}>
-                  <div style={{fontSize:13,fontWeight:700,color:T.text}}>{label}</div>
-                  {entryN&&<div style={{fontSize:12,color:T.text2,marginTop:2}}>{entryN.cal} kcal</div>}
-                </div>
-                <button onClick={()=>rmFromSlot(key,ri)} style={{width:32,height:32,borderRadius:8,background:T.surface,border:`1px solid ${T.border2}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.text2,flexShrink:0}}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-              </div>;})}
+            {slot.map((entry,ri)=><div key={ri} className="slide-right-enter" style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,background:T.surface2,border:`1px solid ${T.border}`,marginBottom:6,animationDelay:`${ri*.05}s`}}>
+              <div style={{flex:1,cursor:entry.type==='recipe'?'pointer':'default'}} onClick={()=>{if(entry.type==='recipe'){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}}>
+                <div style={{fontSize:13,fontWeight:700,color:T.text}}>{slotLabel(entry,recipes,foods)}</div>
+                <div style={{fontSize:12,color:T.text2,marginTop:2}}>{slotCal(entry,recipes,foods)} kcal</div>
+              </div>
+              <button onClick={()=>rmFromSlot(key,ri)} className="tap" style={{width:32,height:32,borderRadius:8,background:T.surface,border:`1px solid ${T.border2}`,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:T.text2,flexShrink:0}}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>)}
           </div>}
         </div>;})}
-      <div style={{padding:'8px 16px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,color:T.text3,fontSize:12}}>
+      <div style={{textAlign:'center',padding:'8px 16px',color:T.text3,fontSize:12,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15,18 9,12 15,6"/></svg> desliza para cambiar de día <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6"/></svg>
       </div>
     </div>
   </div>;
 }
 
-// ── Desktop Planner Tab ───────────────────────────────────────────────────────
+/* ── Desktop Planner ── */
 function DesktopPlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlot,recipes,foods,T,setModal}){
   const fmt=d=>d.toLocaleDateString('es-CO',{day:'numeric',month:'short'});
   return <div style={{padding:16,fontFamily:T.font}}>
     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16}}>
-      <button onClick={()=>setWeekOff(w=>w-1)} style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>◀</button>
+      <button onClick={()=>setWeekOff(w=>w-1)} className="tap" style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>◀</button>
       <span style={{flex:1,textAlign:'center',fontSize:14,fontWeight:700,color:T.text}}>{weekOff===0?'Esta semana':`${fmt(dates[0])} — ${fmt(dates[6])}`}</span>
-      <button onClick={()=>setWeekOff(w=>w+1)} style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>▶</button>
-      {weekOff!==0&&<button onClick={()=>setWeekOff(0)} style={{padding:'7px 12px',borderRadius:8,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:13,fontWeight:700}}>Hoy</button>}
+      <button onClick={()=>setWeekOff(w=>w+1)} className="tap" style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${T.border2}`,background:T.surface2,color:T.text,cursor:'pointer',fontSize:13,fontWeight:700}}>▶</button>
+      {weekOff!==0&&<button onClick={()=>setWeekOff(0)} className="tap" style={{padding:'7px 12px',borderRadius:8,border:`1px solid ${T.accent}`,background:'transparent',color:T.accent,cursor:'pointer',fontSize:13,fontWeight:700}}>Hoy</button>}
     </div>
     <div style={{overflowX:'auto'}}>
       <div style={{display:'grid',gridTemplateColumns:'50px repeat(7,minmax(100px,1fr))',gap:4,minWidth:720}}>
         <div/>
-        {dates.map((d,i)=>{const today=isToday(d);return<div key={i} style={{padding:'7px 4px',textAlign:'center',borderRadius:8,background:today?T.accent:T.surface2,color:today?T.accentText:T.text}}>
-          <div style={{fontSize:10,opacity:.7}}>{DAYS_SHORT[i]}</div><div style={{fontSize:14,fontWeight:700}}>{d.getDate()}</div>{today&&<div style={{fontSize:9}}>hoy</div>}
-        </div>;})}
+        {dates.map((d,i)=>{const tod=isToday(d);return<div key={i} style={{padding:'7px 4px',textAlign:'center',borderRadius:8,background:tod?T.accent:T.surface2,color:tod?T.accentText:T.text,transition:'background .3s'}}><div style={{fontSize:10,opacity:.7}}>{DAYS_SHORT[i]}</div><div style={{fontSize:14,fontWeight:700}}>{d.getDate()}</div>{tod&&<div style={{fontSize:9}}>hoy</div>}</div>;})}
         {MEALS.map(meal=>{const mc=T.meal[meal];return<React.Fragment key={meal}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:6,fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:.3}}>{MEAL_ICONS[meal]}</div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:6,fontSize:11}}>{MEAL_ICONS[meal]}</div>
           {dates.map((d,di)=>{const key=`${dKey(d)}_${meal}`;const slot=planner[key]||[];
-            return<div key={di} style={{minHeight:76,background:T.surface,border:`1px solid ${isToday(d)?T.accent:T.border}`,borderRadius:8,padding:5,display:'flex',flexDirection:'column',gap:3}}>
-              {slot.map((entry,ri)=>{const label=slotLabel(entry,recipes,foods);const cl=entry.type==='recipe';
-                return<div key={ri} style={{display:'flex',alignItems:'center',background:mc.bg,border:`1px solid ${mc.bc}`,borderRadius:5,padding:'3px 6px',gap:3}}>
-                  <span onClick={()=>{if(cl){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}} style={{fontSize:10,fontWeight:700,color:mc.tc,flex:1,lineHeight:1.3,cursor:cl?'pointer':'default'}}>{label}</span>
-                  <button onClick={()=>rmFromSlot(key,ri)} style={{background:'none',border:'none',cursor:'pointer',padding:1,color:mc.tc,opacity:.7,flexShrink:0,fontSize:10,lineHeight:1}}>✕</button>
-                </div>;})}
+            return<div key={di} style={{minHeight:76,background:T.surface,border:`1px solid ${isToday(d)?T.accent:T.border}`,borderRadius:8,padding:5,display:'flex',flexDirection:'column',gap:3,transition:'border-color .3s'}}>
+              {slot.map((entry,ri)=>{const cl=entry.type==='recipe';return<div key={ri} style={{display:'flex',alignItems:'center',background:mc.bg,border:`1px solid ${mc.bc}`,borderRadius:5,padding:'3px 6px',gap:3,animation:'cardIn .25s ease both'}}>
+                <span onClick={()=>{if(cl){const rec=recipes.find(r=>r.id===entry.rId);if(rec)setModal({type:'detail',recipe:rec});}}} style={{fontSize:10,fontWeight:700,color:mc.tc,flex:1,lineHeight:1.3,cursor:cl?'pointer':'default'}}>{slotLabel(entry,recipes,foods)}</span>
+                <button onClick={()=>rmFromSlot(key,ri)} className="tap" style={{background:'none',border:'none',cursor:'pointer',padding:1,color:mc.tc,opacity:.7,flexShrink:0,fontSize:10}}>✕</button>
+              </div>;})}
               <button onClick={()=>setModal({type:'addSlot',date:d,meal})} style={{marginTop:'auto',display:'flex',alignItems:'center',justifyContent:'center',padding:'3px',border:`1px dashed ${T.border2}`,borderRadius:5,background:'none',cursor:'pointer',color:T.text3,fontSize:11}}>+</button>
             </div>;})}
         </React.Fragment>;})}
@@ -504,37 +456,115 @@ function DesktopPlannerTab({dates,weekOff,setWeekOff,planner,addToSlot,rmFromSlo
   </div>;
 }
 
-// ── Recipes Tab ───────────────────────────────────────────────────────────────
+/* ── Settings Tab ── */
+function ThemeCard({themeId,selected,onSelect}){
+  const t=TC[themeId];
+  return<button onClick={()=>onSelect(themeId)} className={`tap${selected?' theme-selected':''}`} style={{padding:'10px 8px',borderRadius:12,border:`2px solid ${selected?t.accent:t.border||'#e0e0e0'}`,background:t.surface,cursor:'pointer',textAlign:'center',position:'relative',transition:'border-color .25s,transform .15s',transform:selected?'scale(1.03)':'scale(1)'}}>
+    {selected&&<div style={{position:'absolute',top:-7,right:-7,width:22,height:22,borderRadius:'50%',background:t.accent,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeDasharray="40" style={{animation:'checkDraw .3s ease forwards'}}><polyline points="20,6 9,17 4,12"/></svg>
+    </div>}
+    <div style={{display:'flex',gap:4,justifyContent:'center',marginBottom:7}}>
+      {t.preview.map((c,i)=><div key={i} style={{width:14,height:14,borderRadius:'50%',background:c,border:'1px solid rgba(0,0,0,.08)'}}/>)}
+    </div>
+    <div style={{fontSize:11,fontWeight:700,color:t.text,lineHeight:1,fontFamily:t.font}}>{t.name}</div>
+  </button>;
+}
+
+function UserConfigCard({pid,user,onSave,isOpen,setOpen}){
+  const T=TC[user.themeId]||TC.dark;
+  const [form,setForm]=useState({...user});
+  const [animKey,setAnimKey]=useState(0);
+  useEffect(()=>setForm({...user}),[user,isOpen]);
+  const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const save=()=>{onSave(form);setOpen(null);setAnimKey(k=>k+1);};
+  return<div className="card-enter" style={{borderRadius:16,border:`2px solid ${isOpen?T.accent:T.border||'#e0e0e0'}`,overflow:'hidden',marginBottom:16,transition:'border-color .3s',background:T.surface}}>
+    {/* Card Header */}
+    <button onClick={()=>setOpen(isOpen?null:pid)} className="tap" style={{width:'100%',padding:'16px 18px',display:'flex',alignItems:'center',gap:14,background:isOpen?T.accentDark:T.surface,border:'none',cursor:'pointer',transition:'background .3s'}}>
+      <div key={animKey} style={{width:52,height:52,borderRadius:16,background:isOpen?T.surface:T.surface2,border:`2px solid ${T.border2}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,flexShrink:0,transition:'background .3s',animation:animKey>0?'bounce .35s ease':undefined}}>{user.emoji}</div>
+      <div style={{flex:1,textAlign:'left'}}>
+        <div style={{fontSize:18,fontWeight:800,color:isOpen?T.accentText:T.text,fontFamily:T.font}}>{user.name}</div>
+        <div style={{fontSize:12,color:isOpen?T.accentText:T.text2,marginTop:2,opacity:.85}}>Tema: {T.name}</div>
+      </div>
+      <div style={{color:isOpen?T.accentText:T.text2,transition:'transform .25s',transform:isOpen?'rotate(180deg)':'rotate(0deg)'}}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6,9 12,15 18,9"/></svg>
+      </div>
+    </button>
+    {/* Expanded content */}
+    {isOpen&&<div style={{padding:'4px 18px 20px',background:T.surface}}>
+      {/* Name */}
+      <LFld t="Nombre" T={T}>
+        <input value={form.name} onChange={e=>fp('name',e.target.value)} style={{width:'100%',padding:'12px 14px',fontSize:16,border:`1.5px solid ${T.border2}`,borderRadius:10,background:T.surface2,color:T.text,outline:'none',fontFamily:'inherit'}} placeholder="Nombre de usuario"/>
+      </LFld>
+      {/* Emoji Picker */}
+      <LFld t="Icono" T={T}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(8,1fr)',gap:4}}>
+          {EMOJIS.map(em=><button key={em} onClick={()=>fp('emoji',em)} className="tap" style={{padding:'8px 4px',borderRadius:8,border:`1.5px solid ${form.emoji===em?T.accent:T.border}`,background:form.emoji===em?T.accentDark:T.surface2,cursor:'pointer',fontSize:20,textAlign:'center',transition:'border-color .15s,background .15s'}}>
+            {em}
+          </button>)}
+        </div>
+      </LFld>
+      {/* Theme Picker */}
+      <LFld t="Tema" T={T}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+          {Object.keys(TC).map(tid=><ThemeCard key={tid} themeId={tid} selected={form.themeId===tid} onSelect={tid=>fp('themeId',tid)}/>)}
+        </div>
+      </LFld>
+      {/* Preview strip */}
+      {form.themeId!==user.themeId&&<div style={{marginBottom:16,borderRadius:12,overflow:'hidden',border:`1px solid ${T.border}`}}>
+        <div style={{background:TC[form.themeId].bg,padding:'10px 14px',display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:22}}>{form.emoji}</span>
+          <div style={{fontSize:15,fontWeight:800,color:TC[form.themeId].text,fontFamily:TC[form.themeId].font}}>{form.name}</div>
+          <div style={{marginLeft:'auto',fontSize:11,color:TC[form.themeId].text2}}>{TC[form.themeId].name} preview</div>
+        </div>
+        <div style={{display:'flex'}}>
+          {Object.values(TC[form.themeId].meal).map((mc,i)=><div key={i} style={{flex:1,background:mc.bg,padding:'6px',textAlign:'center',fontSize:10,fontWeight:700,color:mc.tc}}>{Object.keys(TC[form.themeId].meal)[i].slice(0,3)}</div>)}
+        </div>
+      </div>}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:10}}>
+        <GhostBtn onClick={()=>setOpen(null)} T={T}>Cancelar</GhostBtn>
+        <PrimaryBtn onClick={save} T={T}>Guardar cambios</PrimaryBtn>
+      </div>
+    </div>}
+  </div>;
+}
+
+function SettingsTab({users,setUsers,isMobile}){
+  const [open,setOpen]=useState(null);
+  return<div style={{padding:isMobile?'14px':'20px'}} className="tab-enter">
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:20,fontWeight:800,marginBottom:4}}>Configuración</div>
+      <div style={{fontSize:14,color:'#666'}}>Personaliza el planificador</div>
+    </div>
+    <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.6px',marginBottom:12}}>Usuarios</div>
+    {['jeff','lia'].map((pid,i)=><UserConfigCard key={pid} pid={pid} user={users[pid]} onSave={u=>setUsers(prev=>({...prev,[pid]:u}))} isOpen={open===pid} setOpen={setOpen}/>)}
+    <div style={{background:'#fff',borderRadius:14,border:'1px solid #e0e0e0',padding:'16px 18px',marginTop:8}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:6}}>🥗 Meal Planner</div>
+      <div style={{fontSize:12,color:'#666',lineHeight:1.7}}>Gestiona tu semana, recetas y lista de compras todo en un lugar. Los datos se sincronizan automáticamente si tienes Supabase configurado.</div>
+    </div>
+    {isMobile&&<div style={{height:80}}/>}
+  </div>;
+}
+
+/* ── Recipes Tab ── */
 function RecipesTab({recipes,setRecipes,foods,pantry,setModal,isMobile}){
   const [q,setQ]=useState('');const [mf,setMf]=useState('');
   const MC={Desayuno:{bg:'#FFFBEB',bc:'#F59E0B',tc:'#78350F'},Almuerzo:{bg:'#F0FDF4',bc:'#22C55E',tc:'#14532D'},Cena:{bg:'#EFF6FF',bc:'#3B82F6',tc:'#1E3A8A'}};
   const list=recipes.filter(r=>r.name.toLowerCase().includes(q.toLowerCase())&&(!mf||r.mealType===mf));
   const del=id=>{if(window.confirm('¿Eliminar receta?'))setRecipes(r=>r.filter(x=>x.id!==id));};
   const getMiss=rec=>rec.ingredients.filter(({foodId,amount})=>(pantry.find(p=>p.foodId===foodId)?.amount||0)<amount).length;
-  return <div style={{padding:isMobile?'14px 14px':'16px'}}>
+  return<div style={{padding:isMobile?'14px':'16px'}}>
     <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
-      <div style={{flex:1,minWidth:150,position:'relative'}}>
-        <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#999'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input style={{width:'100%',padding:'11px 12px 11px 38px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}} placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)}/>
-      </div>
-      <select value={mf} onChange={e=>setMf(e.target.value)} style={{padding:'11px 12px',fontSize:14,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}}>
-        <option value="">Todos</option>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}
-      </select>
-      {!isMobile&&<button onClick={()=>setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])})} style={{padding:'11px 16px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Nueva receta</button>}
+      <div style={{flex:1,minWidth:150,position:'relative'}}><svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#999'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input style={{width:'100%',padding:'11px 12px 11px 38px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}} placeholder="Buscar..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <select value={mf} onChange={e=>setMf(e.target.value)} style={{padding:'11px 12px',fontSize:14,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}}><option value="">Todos</option>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</select>
+      {!isMobile&&<button onClick={()=>setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])})} className="tap" style={{padding:'11px 16px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Nueva receta</button>}
     </div>
     <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(auto-fill,minmax(240px,1fr))',gap:10}}>
-      {list.map(rec=>{const n=calcN(rec.ingredients,foods);const mc=MC[rec.mealType]||MC.Almuerzo;const miss=getMiss(rec);
-        return<div key={rec.id} style={{background:'#fff',borderRadius:14,border:'1.5px solid #e0e0e0',padding:16,display:'flex',flexDirection:'column',gap:10}}>
+      {list.map((rec,i)=>{const n=calcN(rec.ingredients,foods);const mc=MC[rec.mealType]||MC.Almuerzo;const miss=getMiss(rec);
+        return<div key={rec.id} className="card-enter" style={{background:'#fff',borderRadius:14,border:'1.5px solid #e0e0e0',padding:16,display:'flex',flexDirection:'column',gap:10,animationDelay:`${Math.min(i,8)*.04}s`}}>
           <div><span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,background:mc.bg,color:mc.tc,border:`1px solid ${mc.bc}`,display:'inline-block',marginBottom:6}}>{MEAL_ICONS[rec.mealType]} {rec.mealType}</span><div style={{fontSize:16,fontWeight:700}}>{rec.name}</div><div style={{fontSize:13,color:'#666',marginTop:3}}>{rec.desc}</div></div>
-          <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:12,color:'#666'}}>⏱ {rec.prepTime}min · {rec.servings} ración{rec.servings>1?'es':''}</span>{miss>0&&<span style={{fontSize:11,background:'#FEF3C7',color:'#92400E',padding:'2px 8px',borderRadius:9,border:'1px solid #F59E0B',fontWeight:700}}>⚠ {miss} faltante{miss>1?'s':''}</span>}</div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}><span style={{fontSize:12,color:'#666'}}>⏱ {rec.prepTime}min · {rec.servings} ración{rec.servings>1?'es':''}</span>{miss>0&&<span style={{fontSize:11,background:'#FEF3C7',color:'#92400E',padding:'2px 8px',borderRadius:9,border:'1px solid #F59E0B',fontWeight:700}}>⚠ {miss}</span>}</div>
           <NutrBar n={n} servings={rec.servings} compact/>
-          <div style={{display:'flex',gap:8}}>
-            <SmBtn onClick={()=>setModal({type:'detail',recipe:rec})}>Ver detalle</SmBtn>
-            <SmBtn v="primary" onClick={()=>setModal({type:'planRecipe',recipe:rec})}>+ Plan</SmBtn>
-            <div style={{flex:1}}/>
-            <SmBtn onClick={()=>setModal({type:'recipeForm',recipe:rec,onSave:r=>setRecipes(rs=>rs.map(x=>x.id===r.id?r:x))})}>✏</SmBtn>
-            <SmBtn v="danger" onClick={()=>del(rec.id)}>✕</SmBtn>
-          </div>
+          <div style={{display:'flex',gap:8}}><SmBtn onClick={()=>setModal({type:'detail',recipe:rec})}>Ver</SmBtn><SmBtn v="primary" onClick={()=>setModal({type:'planRecipe',recipe:rec})}>+ Plan</SmBtn><div style={{flex:1}}/><SmBtn onClick={()=>setModal({type:'recipeForm',recipe:rec,onSave:r=>setRecipes(rs=>rs.map(x=>x.id===r.id?r:x))})}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(rec.id)}>✕</SmBtn></div>
         </div>;})}
       {list.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:'50px 0',color:'#999'}}><div style={{fontSize:36,marginBottom:12}}>🍽</div><div style={{fontSize:15}}>No hay recetas aún.</div></div>}
     </div>
@@ -542,50 +572,40 @@ function RecipesTab({recipes,setRecipes,foods,pantry,setModal,isMobile}){
   </div>;
 }
 
-// ── Foods Tab ─────────────────────────────────────────────────────────────────
+/* ── Foods Tab ── */
 function FoodsTab({foods,setFoods,isMobile}){
   const [q,setQ]=useState('');const [ef,setEf]=useState(null);const [form,setForm]=useState({});
   const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
   const openNew=()=>{setEf({});setForm({name:'',cal:'',prot:'',carbs:'',fat:'',fiber:'',serving:'100',unit:'g'});};
-  const openEdit=f=>{setEf(f);setForm({...f});};
   const save=()=>{const f={id:ef.id||uid(),name:form.name,cal:+form.cal||0,prot:+form.prot||0,carbs:+form.carbs||0,fat:+form.fat||0,fiber:+form.fiber||0,serving:+form.serving||100,unit:form.unit||'g'};if(!f.name)return;if(ef.id)setFoods(fs=>fs.map(x=>x.id===f.id?f:x));else setFoods(fs=>[...fs,f]);setEf(null);};
   const del=id=>{if(window.confirm('¿Eliminar?'))setFoods(fs=>fs.filter(f=>f.id!==id));};
   const filtered=foods.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
-  const p=isMobile?'14px 14px':'16px';
-  return <div style={{padding:p}}>
+  return<div style={{padding:isMobile?'14px':'16px'}}>
     <div style={{display:'flex',gap:8,marginBottom:14,alignItems:'center'}}>
-      <div style={{flex:1,position:'relative'}}>
-        <svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#999'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input style={{width:'100%',padding:'11px 12px 11px 38px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}} placeholder="Buscar alimentos..." value={q} onChange={e=>setQ(e.target.value)}/>
-      </div>
-      <button onClick={openNew} style={{padding:'11px 14px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700,whiteSpace:'nowrap'}}>+ Nuevo</button>
+      <div style={{flex:1,position:'relative'}}><svg style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#999'}} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input style={{width:'100%',padding:'11px 12px 11px 38px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit',background:'#fff'}} placeholder="Buscar alimentos..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+      {!isMobile&&<button onClick={openNew} className="tap" style={{padding:'11px 14px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Nuevo</button>}
     </div>
-    {ef!==null&&<div style={{background:'#fff',borderRadius:14,border:'1.5px solid #ddd',padding:16,marginBottom:16}}>
+    {ef!==null&&<div className="pop-enter" style={{background:'#fff',borderRadius:14,border:'1.5px solid #ddd',padding:16,marginBottom:16}}>
       <div style={{fontSize:15,fontWeight:700,marginBottom:14}}>{ef.id?'Editar':'Nuevo'} alimento</div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-        <LF t="Nombre"><input value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Ej: Leche" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
-        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:8}}><LF t="Porción base"><input type="number" inputMode="decimal" value={form.serving} onChange={e=>fp('serving',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF><LF t="Unidad"><input value={form.unit} onChange={e=>fp('unit',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF></div>
+        <LFld t="Nombre"><input value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Ej: Leche" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld>
+        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:8}}><LFld t="Porción"><input type="number" inputMode="decimal" value={form.serving} onChange={e=>fp('serving',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld><LFld t="Unidad"><input value={form.unit} onChange={e=>fp('unit',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld></div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:14}}>
-        {[['cal','Kcal'],['prot','Prot'],['carbs','Carbs'],['fat','Grasa'],['fiber','Fibra']].map(([k,l])=><LF key={k} t={l}><input type="number" inputMode="decimal" value={form[k]} onChange={e=>fp(k,e.target.value)} placeholder="0" style={{width:'100%',padding:'10px 6px',fontSize:14,border:'1.5px solid #ddd',borderRadius:8,outline:'none',fontFamily:'inherit',textAlign:'center'}}/></LF>)}
-      </div>
-      <div style={{display:'flex',gap:8}}><button onClick={save} style={{flex:1,padding:'12px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{flex:1,padding:'12px',borderRadius:10,border:'1.5px solid #ddd',background:'#f5f5f0',color:'#1a1a1a',cursor:'pointer',fontSize:14}}>Cancelar</button></div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:14}}>{[['cal','Kcal'],['prot','Prot'],['carbs','Carbs'],['fat','Grasa'],['fiber','Fibra']].map(([k,l])=><LFld key={k} t={l}><input type="number" inputMode="decimal" value={form[k]} onChange={e=>fp(k,e.target.value)} placeholder="0" style={{width:'100%',padding:'10px 6px',fontSize:14,border:'1.5px solid #ddd',borderRadius:8,outline:'none',fontFamily:'inherit',textAlign:'center'}}/></LFld>)}</div>
+      <div style={{display:'flex',gap:8}}><button onClick={save} className="tap" style={{flex:1,padding:'12px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} className="tap" style={{flex:1,padding:'12px',borderRadius:10,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14}}>Cancelar</button></div>
     </div>}
     {isMobile?<div style={{display:'flex',flexDirection:'column',gap:8}}>
-      {filtered.map(f=><div key={f.id} style={{background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
-        <div style={{flex:1}}>
-          <div style={{fontSize:15,fontWeight:700}}>{f.name}</div>
-          <div style={{fontSize:12,color:'#666',marginTop:3}}>{f.serving}{f.unit} · {f.cal} kcal · <span style={{color:'#14532D'}}>{f.prot}g prot</span></div>
-        </div>
-        <div style={{display:'flex',gap:6}}><SmBtn onClick={()=>openEdit(f)}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(f.id)}>✕</SmBtn></div>
+      {filtered.map((f,i)=><div key={f.id} className="card-enter" style={{background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',padding:'14px 16px',display:'flex',alignItems:'center',gap:12,animationDelay:`${Math.min(i,8)*.03}s`}}>
+        <div style={{flex:1}}><div style={{fontSize:15,fontWeight:700}}>{f.name}</div><div style={{fontSize:12,color:'#666',marginTop:3}}>{f.serving}{f.unit} · {f.cal} kcal · <span style={{color:'#14532D'}}>{f.prot}g prot</span></div></div>
+        <SmBtn onClick={()=>{setEf(f);setForm({...f});}}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(f.id)}>✕</SmBtn>
       </div>)}
     </div>:<div style={{background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',overflow:'auto'}}>
       <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
         <thead><tr style={{background:'#f5f5f0'}}>{['Alimento','Porción','Kcal','Prot','Carbs','Grasa','Fibra',''].map(h=><th key={h} style={{padding:'9px 10px',textAlign:'left',fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.4px',borderBottom:'1px solid #e0e0e0'}}>{h}</th>)}</tr></thead>
-        <tbody>{filtered.map(f=><tr key={f.id} style={{borderBottom:'1px solid #f0f0f0'}}>
+        <tbody>{filtered.map((f,i)=><tr key={f.id} style={{borderBottom:'1px solid #f0f0f0',animation:`cardIn .25s ease both`,animationDelay:`${Math.min(i,8)*.03}s`}}>
           <td style={{padding:'8px 10px',fontWeight:600,fontSize:13}}>{f.name}</td><td style={{padding:'8px 10px',fontSize:12,color:'#666'}}>{f.serving}{f.unit}</td><td style={{padding:'8px 10px',fontSize:12}}>{f.cal}</td>
           <td style={{padding:'8px 10px',fontSize:12,color:'#14532D'}}>{f.prot}g</td><td style={{padding:'8px 10px',fontSize:12,color:'#1E3A8A'}}>{f.carbs}g</td><td style={{padding:'8px 10px',fontSize:12,color:'#581C87'}}>{f.fat}g</td><td style={{padding:'8px 10px',fontSize:12,color:'#7C2D12'}}>{f.fiber}g</td>
-          <td style={{padding:'8px 10px'}}><div style={{display:'flex',gap:5}}><SmBtn onClick={()=>openEdit(f)}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(f.id)}>✕</SmBtn></div></td>
+          <td style={{padding:'8px 10px'}}><div style={{display:'flex',gap:5}}><SmBtn onClick={()=>{setEf(f);setForm({...f});}}>✏</SmBtn><SmBtn v="danger" onClick={()=>del(f.id)}>✕</SmBtn></div></td>
         </tr>)}</tbody>
       </table>
     </div>}
@@ -593,28 +613,27 @@ function FoodsTab({foods,setFoods,isMobile}){
   </div>;
 }
 
-// ── Pantry Tab ────────────────────────────────────────────────────────────────
+/* ── Pantry Tab ── */
 function PantryTab({pantry,setPantry,foods,isMobile}){
   const [ef,setEf]=useState(null);const [form,setForm]=useState({foodId:'',amount:''});
   const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
   const save=()=>{if(!form.foodId||!form.amount)return;const item={foodId:form.foodId,amount:+form.amount};if(ef&&ef.foodId)setPantry(p=>p.map(x=>x.foodId===ef.foodId?item:x));else{const ex=pantry.find(p=>p.foodId===form.foodId);if(ex)setPantry(p=>p.map(x=>x.foodId===form.foodId?{...x,amount:x.amount+(+form.amount)}:x));else setPantry(p=>[...p,item]);}setEf(null);};
   const avail=foods.filter(f=>!pantry.find(p=>p.foodId===f.id));
-  const p=isMobile?'14px':'16px';
-  return <div style={{padding:p}}>
+  return<div style={{padding:isMobile?'14px':'16px'}}>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
       <div><div style={{fontSize:16,fontWeight:700}}>Alacena</div><div style={{fontSize:13,color:'#666',marginTop:2}}>{pantry.length} ingrediente{pantry.length!==1?'s':''}</div></div>
-      {!isMobile&&<button onClick={()=>{setEf({});setForm({foodId:'',amount:''});}} style={{padding:'10px 14px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Añadir</button>}
+      {!isMobile&&<button onClick={()=>{setEf({});setForm({foodId:'',amount:''}); }} className="tap" style={{padding:'10px 14px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>+ Añadir</button>}
     </div>
-    {ef!==null&&<div style={{background:'#fff',borderRadius:14,border:'1.5px solid #ddd',padding:16,marginBottom:14}}>
+    {ef!==null&&<div className="pop-enter" style={{background:'#fff',borderRadius:14,border:'1.5px solid #ddd',padding:16,marginBottom:14}}>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-        <LF t="Alimento"><select value={form.foodId} onChange={e=>fp('foodId',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit'}}><option value="">Seleccionar...</option>{(ef.foodId?foods:avail).map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></LF>
-        <LF t={`Cantidad${form.foodId?' ('+foods.find(f=>f.id===form.foodId)?.unit+')':''}`}><input type="number" inputMode="decimal" value={form.amount} onChange={e=>fp('amount',e.target.value)} placeholder="0" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+        <LFld t="Alimento"><select value={form.foodId} onChange={e=>fp('foodId',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit'}}><option value="">Seleccionar...</option>{(ef.foodId?foods:avail).map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></LFld>
+        <LFld t={`Cantidad${form.foodId?' ('+foods.find(f=>f.id===form.foodId)?.unit+')':''}`}><input type="number" inputMode="decimal" value={form.amount} onChange={e=>fp('amount',e.target.value)} placeholder="0" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld>
       </div>
-      <div style={{display:'flex',gap:8}}><button onClick={save} style={{flex:1,padding:'12px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} style={{flex:1,padding:'12px',borderRadius:10,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14}}>Cancelar</button></div>
+      <div style={{display:'flex',gap:8}}><button onClick={save} className="tap" style={{flex:1,padding:'12px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar</button><button onClick={()=>setEf(null)} className="tap" style={{flex:1,padding:'12px',borderRadius:10,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14}}>Cancelar</button></div>
     </div>}
-    {pantry.length===0&&ef===null&&<div style={{textAlign:'center',padding:'50px 20px',color:'#999',background:'#fff',borderRadius:14,border:'1px solid #e0e0e0'}}><div style={{fontSize:40,marginBottom:12}}>🏠</div><div style={{fontSize:15,marginBottom:16}}>Tu alacena está vacía.</div>{isMobile&&<button onClick={()=>{setEf({});setForm({foodId:'',amount:''});}} style={{padding:'12px 24px',borderRadius:12,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>+ Añadir ingrediente</button>}</div>}
+    {pantry.length===0&&ef===null&&<div style={{textAlign:'center',padding:'50px 20px',color:'#999',background:'#fff',borderRadius:14,border:'1px solid #e0e0e0'}}><div style={{fontSize:40,marginBottom:12}}>🏠</div><div style={{fontSize:15,marginBottom:16}}>Tu alacena está vacía.</div>{isMobile&&<button onClick={()=>{setEf({});setForm({foodId:'',amount:''}); }} className="tap" style={{padding:'12px 24px',borderRadius:12,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>+ Añadir ingrediente</button>}</div>}
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      {pantry.map(item=>{const f=foods.find(x=>x.id===item.foodId);if(!f)return null;return<div key={item.foodId} style={{display:'flex',alignItems:'center',background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',padding:'14px 16px',gap:12}}>
+      {pantry.map((item,i)=>{const f=foods.find(x=>x.id===item.foodId);if(!f)return null;return<div key={item.foodId} className="card-enter" style={{display:'flex',alignItems:'center',background:'#fff',borderRadius:12,border:'1px solid #e0e0e0',padding:'14px 16px',gap:12,animationDelay:`${Math.min(i,8)*.03}s`}}>
         <div style={{flex:1}}><div style={{fontSize:15,fontWeight:600}}>{f.name}</div><div style={{fontSize:13,color:'#666',marginTop:2}}>{item.amount} {f.unit}</div></div>
         <SmBtn onClick={()=>{setEf(item);setForm({foodId:item.foodId,amount:item.amount});}}>✏</SmBtn>
         <SmBtn v="danger" onClick={()=>setPantry(p=>p.filter(x=>x.foodId!==item.foodId))}>✕</SmBtn>
@@ -624,33 +643,28 @@ function PantryTab({pantry,setPantry,foods,isMobile}){
   </div>;
 }
 
-// ── Shop Tab ──────────────────────────────────────────────────────────────────
-function ShopTab({shopList,shopChk,setShopChk,setPantry,isMobile}){
+/* ── Shop Tab ── */
+function ShopTab({shopList,shopChk,setShopChk,setPantry,users,isMobile}){
   const addToPantry=item=>{setPantry(p=>{const ex=p.find(x=>x.foodId===item.foodId);if(ex)return p.map(x=>x.foodId===item.foodId?{...x,amount:+(x.amount+item.missing).toFixed(1)}:x);return[...p,{foodId:item.foodId,amount:item.missing}];});setShopChk(c=>({...c,[item.foodId]:true}));};
   const undoItem=item=>{setPantry(p=>{const ex=p.find(x=>x.foodId===item.foodId);if(!ex)return p;const n=+(ex.amount-item.missing).toFixed(1);if(n<=0)return p.filter(x=>x.foodId!==item.foodId);return p.map(x=>x.foodId===item.foodId?{...x,amount:n}:x);});setShopChk(c=>({...c,[item.foodId]:false}));};
   const pending=shopList.filter(i=>!shopChk[i.foodId]);const done=shopList.filter(i=>shopChk[i.foodId]);
-  const p=isMobile?'14px':'16px';
-  if(shopList.length===0)return<div style={{textAlign:'center',padding:'60px 20px',color:'#666'}}><div style={{fontSize:44,marginBottom:14}}>✅</div><div style={{fontSize:18,fontWeight:700}}>¡Todo listo!</div><div style={{fontSize:14,marginTop:6,color:'#888'}}>No faltan ingredientes para lo planificado.</div></div>;
-  return <div style={{padding:p}}>
+  const u0=users.jeff;const u1=users.lia;
+  if(shopList.length===0)return<div style={{textAlign:'center',padding:'60px 20px',color:'#666'}}><div style={{fontSize:44,marginBottom:14,animation:'bounce .6s ease'}}>✅</div><div style={{fontSize:18,fontWeight:700}}>¡Todo listo!</div><div style={{fontSize:14,marginTop:6,color:'#888'}}>No faltan ingredientes.</div></div>;
+  return<div style={{padding:isMobile?'14px':'16px'}}>
     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:8}}>
-      <div><div style={{fontSize:16,fontWeight:700}}>{pending.length} ítem{pending.length!==1?'s':''} pendiente{pending.length!==1?'s':''}</div><div style={{fontSize:13,color:'#666',marginTop:3}}>Jeff 🌑 + Lia 🌸 · toca para marcar comprado</div></div>
-      {pending.length>0&&<button onClick={()=>pending.forEach(i=>addToPantry(i))} style={{padding:'10px 16px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Marcar todo</button>}
+      <div><div style={{fontSize:16,fontWeight:700}}>{pending.length} ítem{pending.length!==1?'s':''} pendiente{pending.length!==1?'s':''}</div><div style={{fontSize:13,color:'#666',marginTop:3}}>{u0.emoji} {u0.name} + {u1.emoji} {u1.name}</div></div>
+      {pending.length>0&&<button onClick={()=>pending.forEach(i=>addToPantry(i))} className="tap" style={{padding:'10px 16px',borderRadius:10,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:700}}>Marcar todo</button>}
     </div>
     <div style={{display:'flex',flexDirection:'column',gap:8}}>
-      {pending.map(item=><button key={item.foodId} onClick={()=>addToPantry(item)} className="tap-highlight" style={{display:'flex',alignItems:'center',gap:14,background:'#fff',borderRadius:14,border:'1.5px solid #e0e0e0',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%'}}>
+      {pending.map((item,i)=><button key={item.foodId} onClick={()=>addToPantry(item)} className="tap card-enter" style={{display:'flex',alignItems:'center',gap:14,background:'#fff',borderRadius:14,border:'1.5px solid #e0e0e0',padding:'14px 16px',cursor:'pointer',textAlign:'left',width:'100%',animationDelay:`${Math.min(i,8)*.04}s`}}>
         <div style={{width:26,height:26,borderRadius:8,border:'2px solid #ccc',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#fafafa'}}/>
-        <div style={{flex:1}}>
-          <div style={{fontSize:15,fontWeight:600,color:'#1a1a1a'}}>{item.food.name}</div>
-          <div style={{fontSize:12,color:'#888',marginTop:2}}>{item.forPersons&&item.forPersons.length>0&&<span style={{marginRight:6}}>{item.forPersons.map(p=>TH[p].emoji).join(' ')}</span>}Tienes {item.have} {item.food.unit}</div>
-        </div>
+        <div style={{flex:1}}><div style={{fontSize:15,fontWeight:600,color:'#1a1a1a'}}>{item.food.name}</div><div style={{fontSize:12,color:'#888',marginTop:2}}>{item.forPersons&&item.forPersons.length>0&&<span style={{marginRight:6}}>{item.forPersons.map(p=>users[p]?.emoji||'').join(' ')}</span>}Tienes {item.have} {item.food.unit}</div></div>
         <span style={{fontSize:14,fontWeight:700,color:'#DC2626',flexShrink:0}}>+{item.missing} {item.food.unit}</span>
       </button>)}
       {done.length>0&&<>
-        <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',marginTop:8,marginBottom:4,padding:'0 4px'}}>Comprados · añadidos a la alacena</div>
+        <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.5px',marginTop:8,marginBottom:4,padding:'0 4px'}}>Comprados · añadidos a alacena</div>
         {done.map(item=><div key={item.foodId} style={{display:'flex',alignItems:'center',gap:14,background:'#f5f5f0',borderRadius:14,border:'1px solid #e0e0e0',padding:'12px 16px',opacity:.6}}>
-          <button onClick={()=>undoItem(item)} style={{width:26,height:26,borderRadius:8,background:'#1a3d0b',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg>
-          </button>
+          <button onClick={()=>undoItem(item)} className="tap" style={{width:26,height:26,borderRadius:8,background:'#1a3d0b',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="20,6 9,17 4,12"/></svg></button>
           <div style={{fontSize:14,textDecoration:'line-through',flex:1,color:'#666'}}>{item.food.name} — {item.missing} {item.food.unit}</div>
         </div>)}
       </>}
@@ -659,7 +673,7 @@ function ShopTab({shopList,shopChk,setShopChk,setPantry,isMobile}){
   </div>;
 }
 
-// ── Recipe Form Sheet ─────────────────────────────────────────────────────────
+/* ── Recipe Form Sheet ── */
 function RecipeFormSheet({recipe,foods,onSave,close}){
   const [form,setForm]=useState(recipe?{...recipe}:{id:uid(),name:'',servings:1,prepTime:15,mealType:'Almuerzo',desc:'',ingredients:[],instructions:''});
   const fp=(k,v)=>setForm(f=>({...f,[k]:v}));
@@ -668,49 +682,44 @@ function RecipeFormSheet({recipe,foods,onSave,close}){
   const rmIngr=i=>setForm(f=>({...f,ingredients:f.ingredients.filter((_,j)=>j!==i)}));
   const save=()=>{if(!form.name)return;const ingrs=form.ingredients.filter(i=>i.foodId&&i.amount).map(i=>({...i,amount:+i.amount}));onSave({...form,servings:+form.servings,prepTime:+form.prepTime,ingredients:ingrs});close();};
   const preview=calcN(form.ingredients.filter(i=>i.foodId&&i.amount).map(i=>({...i,amount:+i.amount})),foods);
-  return <Sheet open onClose={close} title={recipe?'Editar receta':'Nueva receta'} maxH="95vh">
+  return<Sheet open onClose={close} title={recipe?'Editar receta':'Nueva receta'} maxH="96vh">
     <div style={{padding:'4px 20px 16px'}}>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:4}}>
-        <LF t="Nombre"><input value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Nombre" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
-        <LF t="Tipo"><select value={form.mealType} onChange={e=>fp('mealType',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit'}}>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</select></LF>
+        <LFld t="Nombre"><input value={form.name} onChange={e=>fp('name',e.target.value)} placeholder="Nombre" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld>
+        <LFld t="Tipo"><select value={form.mealType} onChange={e=>fp('mealType',e.target.value)} style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit'}}>{MEALS.map(m=><option key={m} value={m}>{m}</option>)}</select></LFld>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:4}}>
-        <LF t="Porciones"><input type="number" inputMode="numeric" value={form.servings} onChange={e=>fp('servings',e.target.value)} min="1" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
-        <LF t="Tiempo (min)"><input type="number" inputMode="numeric" value={form.prepTime} onChange={e=>fp('prepTime',e.target.value)} min="0" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+        <LFld t="Porciones"><input type="number" inputMode="numeric" value={form.servings} onChange={e=>fp('servings',e.target.value)} min="1" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld>
+        <LFld t="Tiempo (min)"><input type="number" inputMode="numeric" value={form.prepTime} onChange={e=>fp('prepTime',e.target.value)} min="0" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld>
       </div>
-      <LF t="Descripción"><input value={form.desc} onChange={e=>fp('desc',e.target.value)} placeholder="Descripción breve" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LF>
+      <LFld t="Descripción"><input value={form.desc} onChange={e=>fp('desc',e.target.value)} placeholder="Descripción breve" style={{width:'100%',padding:'12px',fontSize:15,border:'1.5px solid #ddd',borderRadius:10,outline:'none',fontFamily:'inherit'}}/></LFld>
       <div style={{marginBottom:12}}>
-        <div style={{fontSize:11,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          Ingredientes
-          <button onClick={addIngr} style={{padding:'6px 12px',borderRadius:8,border:'1px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Añadir</button>
-        </div>
+        <div style={{fontSize:11,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>Ingredientes<button onClick={addIngr} className="tap" style={{padding:'6px 12px',borderRadius:8,border:'1px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:12,fontWeight:700}}>+ Añadir</button></div>
         {form.ingredients.map((ingr,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'1fr 80px 80px 40px',gap:8,marginBottom:10,alignItems:'center'}}>
           <select value={ingr.foodId} onChange={e=>setIngr(i,'foodId',e.target.value)} style={{padding:'11px 10px',fontSize:14,border:'1.5px solid #ddd',borderRadius:9,background:'#fff',outline:'none',fontFamily:'inherit'}}><option value="">Alimento...</option>{foods.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
           <input type="number" inputMode="decimal" value={ingr.amount} onChange={e=>setIngr(i,'amount',e.target.value)} placeholder="Cant." style={{padding:'11px 8px',fontSize:14,border:'1.5px solid #ddd',borderRadius:9,outline:'none',fontFamily:'inherit',textAlign:'center'}}/>
           <input value={ingr.unit} onChange={e=>setIngr(i,'unit',e.target.value)} placeholder="Unidad" style={{padding:'11px 8px',fontSize:14,border:'1.5px solid #ddd',borderRadius:9,outline:'none',fontFamily:'inherit'}}/>
-          <button onClick={()=>rmIngr(i)} style={{height:44,borderRadius:9,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          <button onClick={()=>rmIngr(i)} className="tap" style={{height:44,borderRadius:9,border:'1px solid #fecaca',background:'#fee2e2',color:'#991b1b',cursor:'pointer',fontSize:16,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
         </div>)}
         {form.ingredients.length===0&&<div style={{fontSize:13,color:'#888',textAlign:'center',padding:'14px',background:'#f5f5f0',borderRadius:10}}>Sin ingredientes aún.</div>}
       </div>
-      {form.ingredients.some(i=>i.foodId&&i.amount)&&<div style={{marginBottom:14}}>
-        <div style={{fontSize:11,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Nutrición por porción (vista previa)</div>
-        <NutrBar n={preview} servings={+form.servings||1} compact/>
-      </div>}
-      <LF t="Instrucciones"><textarea value={form.instructions} onChange={e=>fp('instructions',e.target.value)} placeholder="Pasos de preparación..." style={{width:'100%',padding:'12px',fontSize:14,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:90,lineHeight:1.6}}/></LF>
+      {form.ingredients.some(i=>i.foodId&&i.amount)&&<div style={{marginBottom:14}}><div style={{fontSize:11,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:10}}>Nutrición por porción (preview)</div><NutrBar n={preview} servings={+form.servings||1} compact/></div>}
+      <LFld t="Instrucciones"><textarea value={form.instructions} onChange={e=>fp('instructions',e.target.value)} placeholder="Pasos de preparación..." style={{width:'100%',padding:'12px',fontSize:14,border:'1.5px solid #ddd',borderRadius:10,background:'#fff',outline:'none',fontFamily:'inherit',resize:'vertical',minHeight:90,lineHeight:1.6}}/></LFld>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:4}}>
-        <button onClick={close} style={{padding:'14px',borderRadius:12,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14,fontWeight:600}}>Cancelar</button>
-        <button onClick={save} style={{padding:'14px',borderRadius:12,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar receta</button>
+        <button onClick={close} className="tap" style={{padding:'14px',borderRadius:12,border:'1.5px solid #ddd',background:'#f5f5f0',cursor:'pointer',fontSize:14,fontWeight:600}}>Cancelar</button>
+        <button onClick={save} className="tap" style={{padding:'14px',borderRadius:12,border:'none',background:'#1a3d0b',color:'#fff',cursor:'pointer',fontSize:14,fontWeight:700}}>Guardar receta</button>
       </div>
     </div>
   </Sheet>;
 }
 
-// ── App ───────────────────────────────────────────────────────────────────────
+/* ── App ── */
 function App(){
   const isMobile=useIsMobile();
   const [appReady,setAppReady]=useState(!IS_CONFIGURED);
   const [syncStatus,setSyncStatus]=useState('idle');
   const [tab,setTab]=useState('planner');
+  const [tabKey,setTabKey]=useState(0);
   const [person,setPerson]=useState('jeff');
   const [weekOff,setWeekOff]=useState(0);
   const [foods,setFoods]=useState(FOODS0);
@@ -719,24 +728,27 @@ function App(){
   const [planners,setPlanners]=useState({jeff:{},lia:{}});
   const [modal,setModal]=useState(null);
   const [shopChk,setShopChk]=useState({});
-  const T=TH[person];
+  const [users,setUsers]=useState({jeff:{name:'Jeff',emoji:'🌑',themeId:'dark'},lia:{name:'Lia',emoji:'🌸',themeId:'pink'}});
+  const saveTimer=useRef(null);const isFirst=useRef(true);
+
+  const getT=pid=>{const u=users[pid]||users.jeff;return{...TC[u.themeId]||TC.dark,displayName:u.name,emoji:u.emoji};};
+  const T=getT(person);
   const dates=useMemo(()=>weekDates(weekOff),[weekOff]);
-  const saveTimer=useRef(null);
-  const isFirst=useRef(true);
 
   useEffect(()=>{
     if(!IS_CONFIGURED)return;setSyncStatus('saving');
-    dbLoad().then(data=>{if(data){if(data.foods)setFoods(data.foods);if(data.recipes)setRecipes(data.recipes);if(data.pantry)setPantry(data.pantry);if(data.planners)setPlanners(data.planners);if(data.shopChk)setShopChk(data.shopChk);}setAppReady(true);setSyncStatus('saved');setTimeout(()=>setSyncStatus('idle'),2000);}).catch(()=>{setAppReady(true);setSyncStatus('error');});
+    dbLoad().then(data=>{if(data){if(data.foods)setFoods(data.foods);if(data.recipes)setRecipes(data.recipes);if(data.pantry)setPantry(data.pantry);if(data.planners)setPlanners(data.planners);if(data.shopChk)setShopChk(data.shopChk);if(data.users)setUsers(data.users);}setAppReady(true);setSyncStatus('saved');setTimeout(()=>setSyncStatus('idle'),2000);}).catch(()=>{setAppReady(true);setSyncStatus('error');});
   },[]);
 
   useEffect(()=>{
     if(!IS_CONFIGURED||!appReady)return;if(isFirst.current){isFirst.current=false;return;}
     if(saveTimer.current)clearTimeout(saveTimer.current);setSyncStatus('saving');
-    saveTimer.current=setTimeout(async()=>{try{await Promise.all([dbSave('foods',foods),dbSave('recipes',recipes),dbSave('pantry',pantry),dbSave('planners',planners),dbSave('shopChk',shopChk)]);setSyncStatus('saved');setTimeout(()=>setSyncStatus('idle'),2500);}catch{setSyncStatus('error');}},1200);
-  },[foods,recipes,pantry,planners,shopChk]);
+    saveTimer.current=setTimeout(async()=>{try{await Promise.all([dbSave('foods',foods),dbSave('recipes',recipes),dbSave('pantry',pantry),dbSave('planners',planners),dbSave('shopChk',shopChk),dbSave('users',users)]);setSyncStatus('saved');setTimeout(()=>setSyncStatus('idle'),2500);}catch{setSyncStatus('error');}},1200);
+  },[foods,recipes,pantry,planners,shopChk,users]);
 
-  useEffect(()=>{if(!IS_CONFIGURED)return;const iv=setInterval(async()=>{const d=await dbLoad();if(!d)return;if(d.planners)setPlanners(d.planners);if(d.pantry)setPantry(d.pantry);if(d.shopChk)setShopChk(d.shopChk);},45000);return()=>clearInterval(iv);},[]);
+  useEffect(()=>{if(!IS_CONFIGURED)return;const iv=setInterval(async()=>{const d=await dbLoad();if(!d)return;if(d.planners)setPlanners(d.planners);if(d.pantry)setPantry(d.pantry);if(d.shopChk)setShopChk(d.shopChk);if(d.users)setUsers(d.users);},45000);return()=>clearInterval(iv);},[]);
 
+  const switchTab=t=>{setTab(t);setTabKey(k=>k+1);};
   const addToSlot=(key,entry)=>setPlanners(p=>({...p,[person]:{...p[person],[key]:[...(p[person][key]||[]),entry]}}));
   const rmFromSlot=(key,i)=>setPlanners(p=>{const a=[...(p[person][key]||[])];a.splice(i,1);return{...p,[person]:{...p[person],[key]:a}};});
 
@@ -749,68 +761,66 @@ function App(){
     return Object.entries(needed).map(([fId,amt])=>{const f=foods.find(x=>x.id===fId);if(!f)return null;const have=pantry.find(p=>p.foodId===fId)?.amount||0;const missing=r1(Math.max(0,amt-have));if(missing<=0)return null;return{foodId:fId,food:f,needed:r1(amt),have,missing,forPersons:[...(forPerson[fId]||[])]};}).filter(Boolean);
   },[planners,pantry,recipes,foods]);
 
-  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Alimentos'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length}];
+  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Foods'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length},{id:'settings',icon:'⚙️',label:'Config'}];
 
   if(!appReady)return<div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,background:'#f5f5f0'}}>
     <div style={{width:40,height:40,border:'3px solid #e0e0e0',borderTop:'3px solid #1a3d0b',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
     <div style={{fontSize:14,color:'#666'}}>Cargando datos…</div>
   </div>;
 
-  const syncIndicator={idle:null,saving:<span style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#888'}}><span style={{width:6,height:6,borderRadius:'50%',background:'#f59e0b',display:'inline-block',animation:'pulse 1s infinite'}}/>Guardando</span>,saved:<span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>✓ Guardado</span>,error:<span style={{fontSize:11,color:'#ef4444'}}>⚠ Error</span>}[syncStatus];
-
+  const syncDot={idle:null,saving:<span style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#888'}}><span style={{width:6,height:6,borderRadius:'50%',background:'#f59e0b',display:'inline-block',animation:'pulse 1s infinite'}}/>Guardando</span>,saved:<span style={{fontSize:11,color:'#22c55e',fontWeight:700}}>✓ Guardado</span>,error:<span style={{fontSize:11,color:'#ef4444'}}>⚠ Error</span>}[syncStatus];
   const plannerBg=tab==='planner'?T.bg:'#f5f5f0';
 
-  return <div style={{background:plannerBg,transition:'background .3s',fontFamily:"'Space Grotesk',sans-serif",minHeight:'100vh'}}>
-    {/* ── Top header ── */}
-    <div style={{position:'fixed',top:0,left:0,right:0,zIndex:50,height:52,background:'#fff',borderBottom:'1px solid #e0e0e0',display:'flex',alignItems:'center',paddingLeft:'calc(16px + var(--safe-l))',paddingRight:'calc(16px + var(--safe-r))'}}>
-      <div style={{fontSize:16,fontWeight:800,color:'#1a3d0b',flex:1}}>🥗 Meal Planner</div>
-      {/* Desktop tabs */}
-      <div className="top-nav desktop-only" style={{gap:0,alignItems:'center',height:'100%'}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:'flex',alignItems:'center',gap:5,padding:'0 12px',height:'100%',border:'none',borderBottom:tab===t.id?'2.5px solid #1a3d0b':'2.5px solid transparent',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'#1a3d0b':'#666',whiteSpace:'nowrap',position:'relative'}}>
-          {t.icon} {t.label}{t.badge>0&&<span style={{background:'#DC2626',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px'}}>{t.badge}</span>}
+  return<div style={{background:plannerBg,transition:'background .5s ease',fontFamily:"'Space Grotesk',sans-serif",minHeight:'100vh'}}>
+    <div style={{maxWidth:1100,margin:'0 auto'}}>
+      {/* Header */}
+      <div style={{position:'fixed',top:0,left:0,right:0,zIndex:50,height:52,background:'#fff',borderBottom:'1px solid #e0e0e0',display:'flex',alignItems:'center',paddingLeft:'calc(14px + var(--safe-l))',paddingRight:'calc(14px + var(--safe-r))'}}>
+        <div style={{fontSize:16,fontWeight:800,color:'#1a3d0b',flex:1}}>🥗 Meal Planner</div>
+        <div className="top-tabs desktop-only" style={{gap:0,alignItems:'center',height:'100%'}}>
+          {TABS.map(t=><button key={t.id} onClick={()=>switchTab(t.id)} className="tap" style={{display:'flex',alignItems:'center',gap:5,padding:'0 11px',height:'100%',border:'none',borderBottom:tab===t.id?'2.5px solid #1a3d0b':'2.5px solid transparent',background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:tab===t.id?'#1a3d0b':'#666',whiteSpace:'nowrap',transition:'color .2s'}}>
+            {t.icon} {t.label}{t.badge>0&&<span style={{background:'#DC2626',color:'#fff',fontSize:9,fontWeight:700,borderRadius:10,padding:'1px 5px'}}>{t.badge}</span>}
+          </button>)}
+        </div>
+        {syncDot&&<div style={{marginLeft:10}}>{syncDot}</div>}
+      </div>
+
+      <div className="main-scroll">
+        {/* Person switcher */}
+        {tab==='planner'&&<div className="color-transition" style={{position:'sticky',top:52,zIndex:20,background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',gap:8,alignItems:'center',fontFamily:T.font}}>
+          <span style={{fontSize:10,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',flexShrink:0}}>Plan de</span>
+          {['jeff','lia'].map(pid=>{const th=getT(pid);const u=users[pid];const active=person===pid;return<button key={pid} onClick={()=>setPerson(pid)} className="tap" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'9px',borderRadius:14,border:`1.5px solid ${active?th.accent:T.border2}`,background:active?th.accentDark:'transparent',color:active?th.accentText:T.text2,cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:th.font,transition:'all .25s'}}>
+            <span style={{fontSize:18}}>{u.emoji}</span>{u.name}
+          </button>;})}
+        </div>}
+
+        {/* Tab content */}
+        <div key={tabKey} className="tab-enter" style={{background:plannerBg,minHeight:'calc(100vh - 52px)',transition:'background .5s'}}>
+          {tab==='planner'&&(isMobile
+            ?<MobilePlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
+            :<DesktopPlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
+          )}
+          {tab==='recipes'&&<RecipesTab recipes={recipes} setRecipes={setRecipes} foods={foods} pantry={pantry} setModal={setModal} isMobile={isMobile}/>}
+          {tab==='foods'&&<FoodsTab foods={foods} setFoods={setFoods} isMobile={isMobile}/>}
+          {tab==='pantry'&&<PantryTab pantry={pantry} setPantry={setPantry} foods={foods} isMobile={isMobile}/>}
+          {tab==='shop'&&<ShopTab shopList={shopList} shopChk={shopChk} setShopChk={setShopChk} setPantry={setPantry} users={users} isMobile={isMobile}/>}
+          {tab==='settings'&&<SettingsTab users={users} setUsers={setUsers} isMobile={isMobile}/>}
+        </div>
+      </div>
+
+      {/* Mobile bottom nav */}
+      <div className="bottom-nav mobile-only color-transition" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,background:'#fff',borderTop:'1px solid #e0e0e0',display:'grid',gridTemplateColumns:'repeat(6,1fr)',paddingTop:8}}>
+        {TABS.map(t=><button key={t.id} onClick={()=>switchTab(t.id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 1px 0',border:'none',background:'none',cursor:'pointer',position:'relative'}}>
+          <div style={{fontSize:18,lineHeight:1,position:'relative'}}>{t.icon}{t.badge>0&&<span style={{position:'absolute',top:-3,right:-8,background:'#DC2626',color:'#fff',fontSize:8,fontWeight:700,borderRadius:8,padding:'1px 4px',minWidth:14,textAlign:'center'}}>{t.badge}</span>}</div>
+          <div style={{fontSize:9,fontWeight:tab===t.id?700:500,color:tab===t.id?'#1a3d0b':'#888',transition:'color .2s'}}>{t.label}</div>
+          {tab===t.id&&<div style={{position:'absolute',top:-1,left:'50%',transform:'translateX(-50%)',width:20,height:3,borderRadius:2,background:'#1a3d0b',animation:'popIn .2s ease'}}/>}
         </button>)}
       </div>
-      {syncIndicator&&<div style={{marginLeft:12}}>{syncIndicator}</div>}
+
+      {/* FAB */}
+      {isMobile&&(tab==='recipes'||tab==='pantry'||tab==='foods')&&<button onClick={()=>{if(tab==='recipes')setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])});}} className="tap" style={{position:'fixed',bottom:'calc(var(--nav-h) + var(--safe-bot) + 14px)',right:18,zIndex:40,width:56,height:56,borderRadius:'50%',background:'#1a3d0b',color:'#fff',border:'none',cursor:'pointer',fontSize:28,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 20px rgba(26,61,11,.4)',animation:'float 3s ease-in-out infinite'}}>+</button>}
     </div>
 
-    {/* ── Main content ── */}
-    <div className="main-scroll" style={{maxWidth:1100,margin:'0 auto'}}>
-      {/* Person switcher — planner tab only */}
-      {tab==='planner'&&<div style={{position:'sticky',top:52,zIndex:20,background:T.surface,borderBottom:`1px solid ${T.border}`,padding:'10px 16px',display:'flex',gap:8,alignItems:'center',fontFamily:T.font}}>
-        <span style={{fontSize:11,fontWeight:700,color:T.text2,textTransform:'uppercase',letterSpacing:'.4px',flexShrink:0}}>Ver plan de</span>
-        <div style={{display:'flex',gap:8,flex:1}}>
-          {['jeff','lia'].map(pid=>{const th=TH[pid];const active=person===pid;return<button key={pid} onClick={()=>setPerson(pid)} className="tap-highlight" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'9px',borderRadius:14,border:`1.5px solid ${active?th.accent:T.border2}`,background:active?th.accentDark:'transparent',color:active?th.accentText:T.text2,cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:th.font,transition:'all .15s'}}>
-            <span style={{fontSize:18}}>{th.emoji}</span> {th.name}
-          </button>;})}
-        </div>
-      </div>}
-
-      {/* Tab content */}
-      <div style={{background:tab==='planner'?T.bg:'#f5f5f0',minHeight:'calc(100vh - 52px)'}}>
-        {tab==='planner'&&(isMobile
-          ?<MobilePlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
-          :<DesktopPlannerTab dates={dates} weekOff={weekOff} setWeekOff={setWeekOff} planner={planners[person]} addToSlot={addToSlot} rmFromSlot={rmFromSlot} recipes={recipes} foods={foods} T={T} setModal={setModal}/>
-        )}
-        {tab==='recipes'&&<RecipesTab recipes={recipes} setRecipes={setRecipes} foods={foods} pantry={pantry} setModal={setModal} isMobile={isMobile}/>}
-        {tab==='foods'&&<FoodsTab foods={foods} setFoods={setFoods} isMobile={isMobile}/>}
-        {tab==='pantry'&&<PantryTab pantry={pantry} setPantry={setPantry} foods={foods} isMobile={isMobile}/>}
-        {tab==='shop'&&<ShopTab shopList={shopList} shopChk={shopChk} setShopChk={setShopChk} setPantry={setPantry} isMobile={isMobile}/>}
-      </div>
-    </div>
-
-    {/* ── Mobile bottom nav ── */}
-    <div className="bottom-nav mobile-only" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,background:'#fff',borderTop:'1px solid #e0e0e0',display:'grid',gridTemplateColumns:'repeat(5,1fr)',paddingTop:8}}>
-      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 2px 0',border:'none',background:'none',cursor:'pointer',position:'relative'}}>
-        <div style={{fontSize:20,lineHeight:1}}>{t.icon}{t.badge>0&&<span style={{position:'absolute',top:-2,right:'50%',marginRight:-20,background:'#DC2626',color:'#fff',fontSize:8,fontWeight:700,borderRadius:8,padding:'1px 4px',minWidth:14,textAlign:'center'}}>{t.badge}</span>}</div>
-        <div style={{fontSize:10,fontWeight:tab===t.id?700:500,color:tab===t.id?'#1a3d0b':'#888'}}>{t.label}</div>
-        {tab===t.id&&<div style={{position:'absolute',top:-1,left:'50%',transform:'translateX(-50%)',width:24,height:3,borderRadius:2,background:'#1a3d0b'}}/>}
-      </button>)}
-    </div>
-
-    {/* ── Mobile FAB ── */}
-    {isMobile&&(tab==='recipes'||tab==='pantry'||tab==='foods')&&<button onClick={()=>{if(tab==='recipes')setModal({type:'recipeForm',recipe:null,onSave:r=>setRecipes(rs=>[...rs,r])});else if(tab==='pantry')document.dispatchEvent(new CustomEvent('pantry-add'));else if(tab==='foods')document.dispatchEvent(new CustomEvent('food-add'));}} className="tap-highlight" style={{position:'fixed',bottom:'calc(var(--nav-h) + var(--safe-bot) + 16px)',right:20,zIndex:40,width:56,height:56,borderRadius:'50%',background:'#1a3d0b',color:'#fff',border:'none',cursor:'pointer',fontSize:28,fontWeight:300,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 16px rgba(26,61,11,.35)'}}>+</button>}
-
-    {/* ── Modals / Sheets ── */}
+    {/* Modals */}
     {modal?.type==='addSlot'&&<AddSlotSheet date={modal.date} meal={modal.meal} recipes={recipes} foods={foods} pantry={pantry} addToSlot={addToSlot} T={T} close={()=>setModal(null)}/>}
     {modal?.type==='planRecipe'&&<PlanRecipeSheet recipe={modal.recipe} dates={dates} addToSlot={addToSlot} foods={foods} T={T} close={()=>setModal(null)}/>}
     {modal?.type==='detail'&&<DetailSheet recipe={modal.recipe} foods={foods} pantry={pantry} T={tab==='planner'?T:null} close={()=>setModal(null)} setModal={setModal}/>}
