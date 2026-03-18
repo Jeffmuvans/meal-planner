@@ -44,6 +44,7 @@ button{-webkit-appearance:none;appearance:none;}
 @keyframes themeFlash  { 0%{opacity:0} 30%{opacity:.3} 100%{opacity:0} }
 @keyframes slideRight  { from{transform:translateX(-16px);opacity:0} to{transform:translateX(0);opacity:1} }
 @keyframes checkDraw   { from{stroke-dashoffset:40} to{stroke-dashoffset:0} }
+@keyframes slideDown   { from{transform:translateY(0);opacity:1} to{transform:translateY(105%);opacity:0} }
 
 .sheet-enter{animation:slideUp .3s cubic-bezier(.25,.72,.12,1) both;}
 .fade-enter{animation:fadeIn .18s ease both;}
@@ -187,23 +188,61 @@ function slotCal(entry,recipes,foods){
 function Sheet({open,onClose,T,title,subtitle,children,maxH='92vh'}){
   const isMobile=useIsMobile();
   const sheetRef=useRef(null);
-  const dragY=useRef(null);
-  const [translateY,setTranslateY]=useState(0);
+  const startY=useRef(null);
+  const currentDY=useRef(0);
+  const [dragOffset,setDragOffset]=useState(0);
+  const [closing,setClosing]=useState(false);
 
-  const onHandleTouchStart=e=>{dragY.current=e.touches[0].clientY;setTranslateY(0);};
-  const onHandleTouchMove=e=>{
-    if(dragY.current===null)return;
-    const dy=e.touches[0].clientY-dragY.current;
-    if(dy>0)setTranslateY(dy);
-  };
-  const onHandleTouchEnd=e=>{
-    const dy=e.changedTouches[0].clientY-(dragY.current||0);
-    dragY.current=null;
-    if(dy>80){setTranslateY(0);onClose();}
-    else setTranslateY(0);
+  // Reset state when sheet opens
+  useEffect(()=>{if(open){setDragOffset(0);setClosing(false);}}, [open]);
+
+  const triggerClose=()=>{
+    setClosing(true);
+    // Let CSS animation play (0.3s), then call onClose
+    setTimeout(()=>{setClosing(false);setDragOffset(0);onClose();},300);
   };
 
-  if(!open)return null;
+  const onDragStart=e=>{
+    startY.current=e.touches[0].clientY;
+    currentDY.current=0;
+    if(sheetRef.current){
+      sheetRef.current.style.transition='none';
+    }
+  };
+  const onDragMove=e=>{
+    if(startY.current===null)return;
+    const dy=e.touches[0].clientY-startY.current;
+    if(dy<0)return; // don't allow dragging up
+    currentDY.current=dy;
+    // Apply drag directly via ref for 60fps (no React re-render on every frame)
+    if(sheetRef.current){
+      sheetRef.current.style.transform=`translateY(${dy}px)`;
+      // Fade backdrop proportionally
+      const progress=Math.min(dy/300,1);
+      const overlay=sheetRef.current.closest('[data-overlay]');
+      if(overlay) overlay.style.background=`rgba(0,0,0,${0.55*(1-progress*0.7)})`;
+    }
+  };
+  const onDragEnd=()=>{
+    if(startY.current===null)return;
+    startY.current=null;
+    const dy=currentDY.current;
+    if(sheetRef.current){
+      sheetRef.current.style.transition='';
+    }
+    if(dy>100){
+      triggerClose();
+    } else {
+      // Snap back
+      if(sheetRef.current){
+        sheetRef.current.style.transform='translateY(0)';
+        const overlay=sheetRef.current.closest('[data-overlay]');
+        if(overlay) overlay.style.background='rgba(0,0,0,.55)';
+      }
+    }
+  };
+
+  if(!open&&!closing)return null;
   if(!isMobile)return(
     <div onClick={onClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'52px 16px 16px',overflowY:'auto'}}>
       <div onClick={e=>e.stopPropagation()} className="pop-enter" style={{background:T?T.surface:'#fff',borderRadius:16,border:`1px solid ${T?T.border:'#e0e0e0'}`,boxShadow:'0 24px 64px rgba(0,0,0,.22)',width:'100%',maxWidth:500,maxHeight:'85vh',overflowY:'auto',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}}>
@@ -215,17 +254,43 @@ function Sheet({open,onClose,T,title,subtitle,children,maxH='92vh'}){
       </div>
     </div>
   );
+
+  const sheetStyle={
+    background:T?T.surface:'#fff',
+    borderRadius:'22px 22px 0 0',
+    maxHeight:maxH,
+    display:'flex',
+    flexDirection:'column',
+    paddingBottom:'calc(var(--safe-bot) + 8px)',
+    fontFamily:T?T.font:"'Space Grotesk',sans-serif",
+    transition:'transform .3s cubic-bezier(.25,.72,.12,1)',
+    willChange:'transform',
+    animation: closing ? 'slideDown .3s cubic-bezier(.4,0,1,1) forwards' : 'slideUp .3s cubic-bezier(.25,.72,.12,1) both',
+  };
+
   return(
-    <div onClick={onClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.55)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
-      <div ref={sheetRef} onClick={e=>e.stopPropagation()} className="sheet-enter" style={{background:T?T.surface:'#fff',borderRadius:'22px 22px 0 0',maxHeight:maxH,display:'flex',flexDirection:'column',paddingBottom:'calc(var(--safe-bot) + 8px)',fontFamily:T?T.font:"'Space Grotesk',sans-serif",transform:`translateY(${translateY}px)`,transition:translateY===0?'transform .25s cubic-bezier(.25,.72,.12,1)':' none'}}>
-        {/* Drag handle — touch here to swipe down and close */}
-        <div onTouchStart={onHandleTouchStart} onTouchMove={onHandleTouchMove} onTouchEnd={onHandleTouchEnd} style={{padding:'10px 0 6px',display:'flex',justifyContent:'center',flexShrink:0,cursor:'grab',touchAction:'none'}}>
-          <div style={{width:42,height:4,borderRadius:2,background:T?T.border2:'#ddd',transition:'background .15s'}}/>
+    <div data-overlay="1" onClick={triggerClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.55)',display:'flex',flexDirection:'column',justifyContent:'flex-end',transition:'background .15s'}}>
+      <div ref={sheetRef} onClick={e=>e.stopPropagation()} style={sheetStyle}>
+        {/* ── Drag zone: handle + header ── */}
+        <div
+          onTouchStart={onDragStart}
+          onTouchMove={onDragMove}
+          onTouchEnd={onDragEnd}
+          style={{touchAction:'none',userSelect:'none',WebkitUserSelect:'none',flexShrink:0}}
+        >
+          {/* Visual handle pill */}
+          <div style={{padding:'12px 0 8px',display:'flex',justifyContent:'center'}}>
+            <div style={{width:44,height:5,borderRadius:3,background:T?T.border2:'#d0d0d0'}}/>
+          </div>
+          {/* Title row inside drag zone */}
+          {(title||subtitle)&&<div style={{padding:'0 20px 14px',borderBottom:`1px solid ${T?T.border:'#f0f0f0'}`,display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:17,fontWeight:700,color:T?T.text:'#1a1a1a'}}>{title}</div>
+              {subtitle&&<div style={{fontSize:13,color:T?T.text2:'#666',marginTop:3}}>{subtitle}</div>}
+            </div>
+            <CloseBtn onClick={e=>{e.stopPropagation();triggerClose();}} T={T}/>
+          </div>}
         </div>
-        {(title||subtitle)&&<div onTouchStart={onHandleTouchStart} onTouchMove={onHandleTouchMove} onTouchEnd={onHandleTouchEnd} style={{padding:'4px 20px 14px',borderBottom:`1px solid ${T?T.border:'#f0f0f0'}`,flexShrink:0,display:'flex',alignItems:'flex-start',justifyContent:'space-between',touchAction:'none'}}>
-          <div><div style={{fontSize:17,fontWeight:700,color:T?T.text:'#1a1a1a'}}>{title}</div>{subtitle&&<div style={{fontSize:13,color:T?T.text2:'#666',marginTop:3}}>{subtitle}</div>}</div>
-          <CloseBtn onClick={onClose} T={T}/>
-        </div>}
         <div style={{overflowY:'auto',flex:1}}>{children}</div>
       </div>
     </div>
