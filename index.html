@@ -91,8 +91,8 @@ button{-webkit-appearance:none;appearance:none;}
 <body>
 <div id="root"></div>
 <script>
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://dehigkcuqoqigeikiijr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGlna2N1cW9xaWdlaWtpaWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDMzNDAsImV4cCI6MjA4OTQxOTM0MH0.qGxELDvYORIsKN-SBkhti_gauVivkXFvfiTWYXgzCTI';
 const IS_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
 const db = IS_CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 async function dbLoad(){if(!db)return null;try{const{data,error}=await db.from('app_state').select('key,value');if(error)throw error;return Object.fromEntries((data||[]).map(r=>[r.key,r.value]));}catch{return null;}}
@@ -781,7 +781,7 @@ function App(){
     return Object.entries(needed).map(([fId,amt])=>{const f=foods.find(x=>x.id===fId);if(!f)return null;const have=pantry.find(p=>p.foodId===fId)?.amount||0;const missing=r1(Math.max(0,amt-have));if(missing<=0)return null;return{foodId:fId,food:f,needed:r1(amt),have,missing,forPersons:[...(forPerson[fId]||[])]};}).filter(Boolean);
   },[planners,pantry,recipes,foods]);
 
-  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Foods'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length},{id:'settings',icon:'⚙️',label:'Config'}];
+  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Alimentos'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length},{id:'settings',icon:'⚙️',label:'Configuración'}];
 
   if(!appReady)return<div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,background:'#f5f5f0'}}>
     <div style={{width:40,height:40,border:'3px solid #e0e0e0',borderTop:'3px solid #1a3d0b',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
