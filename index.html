@@ -91,8 +91,8 @@ button{-webkit-appearance:none;appearance:none;}
 <body>
 <div id="root"></div>
 <script>
-const SUPABASE_URL = 'https://dehigkcuqoqigeikiijr.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGlna2N1cW9xaWdlaWtpaWpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NDMzNDAsImV4cCI6MjA4OTQxOTM0MH0.qGxELDvYORIsKN-SBkhti_gauVivkXFvfiTWYXgzCTI';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
 const IS_CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
 const db = IS_CONFIGURED ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 async function dbLoad(){if(!db)return null;try{const{data,error}=await db.from('app_state').select('key,value');if(error)throw error;return Object.fromEntries((data||[]).map(r=>[r.key,r.value]));}catch{return null;}}
@@ -186,6 +186,23 @@ function slotCal(entry,recipes,foods){
 /* ── Sheet ── */
 function Sheet({open,onClose,T,title,subtitle,children,maxH='92vh'}){
   const isMobile=useIsMobile();
+  const sheetRef=useRef(null);
+  const dragY=useRef(null);
+  const [translateY,setTranslateY]=useState(0);
+
+  const onHandleTouchStart=e=>{dragY.current=e.touches[0].clientY;setTranslateY(0);};
+  const onHandleTouchMove=e=>{
+    if(dragY.current===null)return;
+    const dy=e.touches[0].clientY-dragY.current;
+    if(dy>0)setTranslateY(dy);
+  };
+  const onHandleTouchEnd=e=>{
+    const dy=e.changedTouches[0].clientY-(dragY.current||0);
+    dragY.current=null;
+    if(dy>80){setTranslateY(0);onClose();}
+    else setTranslateY(0);
+  };
+
   if(!open)return null;
   if(!isMobile)return(
     <div onClick={onClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'52px 16px 16px',overflowY:'auto'}}>
@@ -200,9 +217,12 @@ function Sheet({open,onClose,T,title,subtitle,children,maxH='92vh'}){
   );
   return(
     <div onClick={onClose} className="fade-enter" style={{position:'fixed',inset:0,zIndex:100,background:'rgba(0,0,0,.55)',display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
-      <div onClick={e=>e.stopPropagation()} className="sheet-enter" style={{background:T?T.surface:'#fff',borderRadius:'22px 22px 0 0',maxHeight:maxH,display:'flex',flexDirection:'column',paddingBottom:'calc(var(--safe-bot) + 8px)',fontFamily:T?T.font:"'Space Grotesk',sans-serif"}}>
-        <div style={{padding:'10px 0 6px',display:'flex',justifyContent:'center',flexShrink:0}}><div style={{width:42,height:4,borderRadius:2,background:T?T.border2:'#ddd'}}/></div>
-        {(title||subtitle)&&<div style={{padding:'4px 20px 14px',borderBottom:`1px solid ${T?T.border:'#f0f0f0'}`,flexShrink:0,display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div ref={sheetRef} onClick={e=>e.stopPropagation()} className="sheet-enter" style={{background:T?T.surface:'#fff',borderRadius:'22px 22px 0 0',maxHeight:maxH,display:'flex',flexDirection:'column',paddingBottom:'calc(var(--safe-bot) + 8px)',fontFamily:T?T.font:"'Space Grotesk',sans-serif",transform:`translateY(${translateY}px)`,transition:translateY===0?'transform .25s cubic-bezier(.25,.72,.12,1)':' none'}}>
+        {/* Drag handle — touch here to swipe down and close */}
+        <div onTouchStart={onHandleTouchStart} onTouchMove={onHandleTouchMove} onTouchEnd={onHandleTouchEnd} style={{padding:'10px 0 6px',display:'flex',justifyContent:'center',flexShrink:0,cursor:'grab',touchAction:'none'}}>
+          <div style={{width:42,height:4,borderRadius:2,background:T?T.border2:'#ddd',transition:'background .15s'}}/>
+        </div>
+        {(title||subtitle)&&<div onTouchStart={onHandleTouchStart} onTouchMove={onHandleTouchMove} onTouchEnd={onHandleTouchEnd} style={{padding:'4px 20px 14px',borderBottom:`1px solid ${T?T.border:'#f0f0f0'}`,flexShrink:0,display:'flex',alignItems:'flex-start',justifyContent:'space-between',touchAction:'none'}}>
           <div><div style={{fontSize:17,fontWeight:700,color:T?T.text:'#1a1a1a'}}>{title}</div>{subtitle&&<div style={{fontSize:13,color:T?T.text2:'#666',marginTop:3}}>{subtitle}</div>}</div>
           <CloseBtn onClick={onClose} T={T}/>
         </div>}
@@ -761,7 +781,7 @@ function App(){
     return Object.entries(needed).map(([fId,amt])=>{const f=foods.find(x=>x.id===fId);if(!f)return null;const have=pantry.find(p=>p.foodId===fId)?.amount||0;const missing=r1(Math.max(0,amt-have));if(missing<=0)return null;return{foodId:fId,food:f,needed:r1(amt),have,missing,forPersons:[...(forPerson[fId]||[])]};}).filter(Boolean);
   },[planners,pantry,recipes,foods]);
 
-  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Alimentos'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length},{id:'settings',icon:'⚙️',label:'Configuración'}];
+  const TABS=[{id:'planner',icon:'📅',label:'Plan'},{id:'recipes',icon:'📖',label:'Recetas'},{id:'foods',icon:'🥦',label:'Foods'},{id:'pantry',icon:'🏠',label:'Alacena'},{id:'shop',icon:'🛒',label:'Compras',badge:shopList.length},{id:'settings',icon:'⚙️',label:'Config'}];
 
   if(!appReady)return<div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,background:'#f5f5f0'}}>
     <div style={{width:40,height:40,border:'3px solid #e0e0e0',borderTop:'3px solid #1a3d0b',borderRadius:'50%',animation:'spin .8s linear infinite'}}/>
@@ -808,7 +828,7 @@ function App(){
       </div>
 
       {/* Mobile bottom nav */}
-      <div className="bottom-nav mobile-only color-transition" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,background:'#fff',borderTop:'1px solid #e0e0e0',display:'grid',gridTemplateColumns:'repeat(6,1fr)',paddingTop:8}}>
+      <div className="bottom-nav color-transition" style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,background:'#fff',borderTop:'1px solid #e0e0e0',display:'grid',gridTemplateColumns:'repeat(6,1fr)',paddingTop:8}}>
         {TABS.map(t=><button key={t.id} onClick={()=>switchTab(t.id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'3px 1px 0',border:'none',background:'none',cursor:'pointer',position:'relative'}}>
           <div style={{fontSize:18,lineHeight:1,position:'relative'}}>{t.icon}{t.badge>0&&<span style={{position:'absolute',top:-3,right:-8,background:'#DC2626',color:'#fff',fontSize:8,fontWeight:700,borderRadius:8,padding:'1px 4px',minWidth:14,textAlign:'center'}}>{t.badge}</span>}</div>
           <div style={{fontSize:9,fontWeight:tab===t.id?700:500,color:tab===t.id?'#1a3d0b':'#888',transition:'color .2s'}}>{t.label}</div>
